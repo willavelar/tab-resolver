@@ -20,7 +20,7 @@ const handleImage = (e) => {
 };
 
 const submit = () => {
-    form.post('/sessions', { forceFormData: true });
+    form.post(route('sessions.store'), { forceFormData: true });
 };
 </script>
 
