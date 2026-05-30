@@ -161,8 +161,9 @@ Browser ← Reverb (WS) ← Redis Pub/Sub ← queue-worker (broadcast)
 ### Tela 3 — Gerenciar Sessão (`/sessions/{id}`)
 - Link de convite (`/join/{share_token}`) com botão copiar
 - Lista de participantes com status em tempo real (via Reverb)
-- Botão "Calcular" habilitado apenas quando todos enviaram
+- Botão "Calcular" sempre habilitado após ao menos 1 participante submeter; o criador decide o momento certo (vê o status de cada um antes de clicar)
 - Exibe preview dos itens extraídos da conta
+- O criador também submete o próprio pedido por esta tela (via botão "Adicionar meu pedido") — um registro `participant` é criado automaticamente para o criador na criação da sessão
 
 ### Tela 4 — Entrada do Convidado (`/join/{share_token}`)
 - Campo nome (se primeiro acesso)
