@@ -1,5 +1,6 @@
 .superpowers/
 .idea/
+/docs
 
 /node_modules
 /public/build
