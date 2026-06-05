@@ -1,58 +1,196 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# TabResolver
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Bill-splitting web app. Users create a session for a restaurant or bar tab, upload a photo of the receipt, and AI reads the items automatically. Participants are assigned to the items they consumed and the app calculates who owes what.
 
-## About Laravel
+## Stack
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+| Layer | Technology |
+|---|---|
+| **Backend** | PHP 8.3 · Laravel 13 |
+| **Frontend** | Vue 3 · Inertia.js v2 |
+| **Styling** | Tailwind CSS v3 |
+| **Build** | Vite 8 (`laravel-vite-plugin`) |
+| **Auth** | Laravel Breeze (session-based · Sanctum) |
+| **Database** | MySQL 8 (Docker) · SQLite in-memory (tests) |
+| **Cache / Sessions / Queues** | Redis 7 |
+| **Testing** | Pest v4 · PHPUnit |
+| **Infra** | Docker Compose · Nginx |
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Directory layout
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
-
-## Learning Laravel
-
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
-
-```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+```
+app/
+  Http/
+    Controllers/        Thin controllers — logic in services/actions
+    Controllers/Auth/   Breeze auth controllers
+    Middleware/         HandleInertiaRequests (shared props)
+    Requests/           Form Request validation classes
+  Models/               Eloquent models (ULID primary keys)
+  Providers/            AppServiceProvider
+resources/
+  js/
+    Components/         Reusable Vue components (Breeze primitives + custom)
+    Layouts/            AuthenticatedLayout, GuestLayout
+    Pages/              Inertia pages — one file per route
+      Auth/             Login, Register, Password flows
+      Sessions/         Bill-splitting session pages
+  css/app.css           Tailwind entry point
+routes/
+  web.php               Application routes
+  auth.php              Breeze auth routes
+database/
+  migrations/           Standard Laravel migrations
+  factories/            Model factories (Faker)
+  seeders/              DatabaseSeeder
+docker/
+  php/Dockerfile        PHP-FPM image
+  nginx/default.conf    Nginx site config
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+## Features
 
-## Contributing
+- **Receipt upload** — photo of a tab is uploaded and processed by AI to extract line items
+- **Session management** — each bill-splitting event is an isolated session
+- **Item assignment** — participants mark what they consumed
+- **Split calculation** — the app totals each person's share automatically
+- **Auth** — session-based authentication via Laravel Breeze
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## Prerequisites
 
-## Code of Conduct
+- [Docker](https://docs.docker.com/get-docker/) + Docker Compose
+- [Composer](https://getcomposer.org/) + [Node.js](https://nodejs.org/) (for running outside Docker)
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## Running with Docker
 
-## Security Vulnerabilities
+```bash
+# Clone the repository
+git clone git@github.com:willavelar/tab-resolver.git
+cd tab-resolver
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+# Create the environment file
+cp .env.example .env
+# Edit .env and set APP_KEY (or let artisan generate it)
+
+# Start all services
+docker compose up --build
+
+# In another terminal, run setup
+docker compose exec app php artisan key:generate
+docker compose exec app php artisan migrate --seed
+```
+
+Access: **http://localhost**
+
+## Running locally
+
+```bash
+# Install PHP dependencies
+composer install
+
+# Install JS dependencies
+npm install
+
+# Copy and edit the .env file
+cp .env.example .env
+# Update DB_HOST, DB_USERNAME, DB_PASSWORD and REDIS_HOST to match your local services
+
+# Generate app key and run migrations
+php artisan key:generate
+php artisan migrate --seed
+
+# Start everything in one command (Laravel + queue worker + Pail + Vite)
+composer run dev
+```
+
+## Environment variables
+
+Create a `.env` file at the root based on `.env.example`:
+
+```env
+APP_NAME=TabResolver
+APP_ENV=local
+APP_KEY=           # generate with: php artisan key:generate
+APP_DEBUG=true
+APP_URL=http://localhost
+
+DB_CONNECTION=mysql
+DB_HOST=mysql
+DB_PORT=3306
+DB_DATABASE=tabresolve
+DB_USERNAME=tabresolve
+DB_PASSWORD=secret
+
+CACHE_STORE=redis
+SESSION_DRIVER=redis
+QUEUE_CONNECTION=redis
+
+REDIS_HOST=redis
+REDIS_PASSWORD=null
+REDIS_PORT=6379
+```
+
+## Useful commands
+
+```bash
+# Start the full stack (server + queue + logs + Vite)
+composer run dev
+
+# Run migrations
+php artisan migrate
+
+# Fresh migration with seed
+php artisan migrate:fresh --seed
+
+# Run tests (SQLite in-memory — no Docker required)
+composer run test
+
+# Run a specific test
+php artisan test --filter=ExampleTest
+
+# Code style (Pint)
+./vendor/bin/pint
+
+# Build frontend assets
+npm run build
+```
+
+## Architecture
+
+### Inertia + Vue pattern
+
+There is no separate API. The backend renders Inertia responses and Vue handles the UI. Data flows one way:
+
+1. Laravel controller calls `Inertia::render('PageName', $props)`.
+2. `HandleInertiaRequests` middleware merges shared props (auth user, flash messages) into every response.
+3. Vue page component receives props via `defineProps`.
+4. Mutations go through `useForm` from `@inertiajs/vue3` — POST/PATCH/DELETE back to Laravel routes.
+
+### Frontend routes
+
+| Route | Access | Description |
+|---|---|---|
+| `/` | Public | Redirects to dashboard or login |
+| `/login` | Guest | Login |
+| `/register` | Guest | Sign up |
+| `/dashboard` | Auth | Main dashboard |
+| `/sessions/create` | Auth | Create a new bill-splitting session |
+| `/profile` | Auth | Edit profile |
+
+### Primary keys
+
+All models use **ULID** primary keys (`$table->ulid('id')->primary()`). Never use auto-increment integers for new tables.
+
+### Queue
+
+`QUEUE_CONNECTION=redis` in production/Docker. In tests `QUEUE_CONNECTION=sync` (see `phpunit.xml`) so jobs run inline without a worker.
+
+### Testing conventions
+
+- **Pest** is the test runner — use `it()`, `test()`, `expect()` syntax.
+- Tests run against **SQLite in-memory** — fast, no external services needed.
+- Use `RefreshDatabase` trait to reset state between tests.
+- Feature tests hit real routes via `$this->get()` / `$this->post()` etc.
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+MIT
