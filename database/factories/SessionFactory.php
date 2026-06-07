@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\ExtractionStatus;
 use App\Models\Session;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -22,6 +23,7 @@ class SessionFactory extends Factory
             'user_id' => User::factory(),
             'title' => fake()->sentence(3),
             'image_path' => 'receipts/'.fake()->uuid().'.jpg',
+            'status' => ExtractionStatus::Pending,
         ];
     }
 }
