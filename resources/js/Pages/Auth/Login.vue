@@ -30,11 +30,11 @@ const submit = () => {
         <Head title="TabResolver — Entrar" />
 
         <div class="mb-8 text-center">
-            <h1 class="text-3xl font-bold text-gray-900">TabResolver</h1>
-            <p class="mt-2 text-sm text-gray-500">Divida a conta sem discussão</p>
+            <h1 class="text-3xl font-semibold tracking-tight text-ink">TabResolver</h1>
+            <p class="mt-2 text-sm text-muted">Divida a conta sem discussão</p>
         </div>
 
-        <div v-if="status" class="mb-4 text-sm font-medium text-green-600">
+        <div v-if="status" class="mb-4 text-sm font-medium text-success">
             {{ status }}
         </div>
 
@@ -67,11 +67,11 @@ const submit = () => {
             </div>
 
             <div class="flex items-center justify-between">
-                <label class="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                <label class="flex items-center gap-2 text-sm text-body cursor-pointer">
                     <input
                         v-model="form.remember"
                         type="checkbox"
-                        class="rounded border-gray-300 text-indigo-600"
+                        class="rounded border-hairline-strong bg-surface-card text-primary focus:ring-primary"
                     />
                     Lembrar-me
                 </label>
@@ -79,7 +79,7 @@ const submit = () => {
                 <Link
                     v-if="canResetPassword"
                     :href="route('password.request')"
-                    class="text-sm text-indigo-600 hover:text-indigo-500"
+                    class="text-sm text-primary hover:text-primary-active"
                 >
                     Esqueceu a senha?
                 </Link>
@@ -93,9 +93,9 @@ const submit = () => {
                 Entrar
             </PrimaryButton>
 
-            <p class="text-center text-sm text-gray-500">
+            <p class="text-center text-sm text-muted">
                 Não tem conta?
-                <Link :href="route('register')" class="text-indigo-600 hover:text-indigo-500">
+                <Link :href="route('register')" class="text-primary hover:text-primary-active">
                     Registrar-se
                 </Link>
             </p>
