@@ -37,6 +37,7 @@ export default {
                 'on-primary': v('--color-on-primary'),
                 success: v('--color-success'),
                 error: v('--color-error'),
+                'error-strong': v('--color-error-strong'),
                 'timeline-thinking': v('--color-timeline-thinking'),
                 'timeline-grep': v('--color-timeline-grep'),
                 'timeline-read': v('--color-timeline-read'),
