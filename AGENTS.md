@@ -60,35 +60,45 @@ Guidance for AI Coding Agents when working with code in this repository.
 - **Auth**: Laravel Breeze (session-based, Sanctum)
 - **Database**: MySQL 8 (production/Docker), SQLite in-memory (tests)
 - **Cache / Sessions / Queues**: Redis 7
-- **Testing**: Pest v4 + PHPUnit (SQLite in-memory, no Docker required)
+- **Testing**: Pest v4 + PHPUnit (SQLite in-memory — no external services needed; still run in the container)
 - **Language**: PT-BR throughout the UI
 
 ## Commands
 
-```bash
-# Full stack via Docker
-docker compose up --build
+> **Always run commands inside Docker — never on the host.**
+> The host toolchain is unreliable (e.g. host Node is too old for Vite 8, which
+> requires Node ≥ 20.19). The `app` container ships PHP 8.3, Composer, and Node 20,
+> so all `php`/`artisan`/`composer`/`npm` commands must run there. Bring the stack
+> up first (`docker compose up -d`), then exec into `app`.
 
-# Local development (MySQL + Redis must be running)
-composer run dev        # starts Laravel, queue worker, Pail log viewer, and Vite concurrently
+```bash
+# Start the full stack (app + nginx + mysql + redis) — app on http://localhost:8080
+docker compose up -d --build
+
+# Run any command inside the app container
+docker compose exec app <command>
+
+# Assets (Vite 8 — MUST run in the container)
+docker compose exec app npm install
+docker compose exec app npm run build       # production build
+docker compose exec app npm run dev         # Vite HMR (expose port 5173 if used from host)
+
+# Dev runner (Laravel + queue worker + Pail logs + Vite, concurrently)
+docker compose exec app composer run dev
 
 # Individual services
-php artisan serve       # :8000
-npm run dev             # Vite HMR
+docker compose exec app php artisan serve
 
 # Database
-php artisan migrate
-php artisan migrate:fresh --seed
+docker compose exec app php artisan migrate
+docker compose exec app php artisan migrate:fresh --seed
 
-# Tests (SQLite in-memory — no Docker needed)
-composer run test       # clears config, then php artisan test
-php artisan test --filter=ExampleTest
+# Tests (SQLite in-memory — fast, no external services, but still run in-container)
+docker compose exec app composer run test
+docker compose exec app php artisan test --filter=ExampleTest
 
 # Code style (Pint)
-./vendor/bin/pint
-
-# Assets
-npm run build
+docker compose exec app ./vendor/bin/pint
 ```
 
 ## Architecture

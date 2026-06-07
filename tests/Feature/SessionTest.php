@@ -1,0 +1,113 @@
+<?php
+
+use App\Models\Session;
+use App\Models\User;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
+
+test('guest cannot create a session', function () {
+    $response = $this->post('/sessions', [
+        'title' => 'Jantar de quinta',
+        'image' => UploadedFile::fake()->create('conta.jpg', 100, 'image/jpeg'),
+    ]);
+
+    $response->assertRedirect('/login');
+});
+
+test('authenticated user can create a session with a receipt photo', function () {
+    Storage::fake('public');
+    $user = User::factory()->create();
+    $image = UploadedFile::fake()->create('conta.jpg', 100, 'image/jpeg');
+
+    $response = $this
+        ->actingAs($user)
+        ->post('/sessions', [
+            'title' => 'Jantar de quinta',
+            'image' => $image,
+        ]);
+
+    $session = Session::first();
+
+    expect($session)->not->toBeNull();
+    expect($session->title)->toBe('Jantar de quinta');
+    expect($session->user_id)->toBe($user->id);
+
+    Storage::disk('public')->assertExists($session->image_path);
+
+    $response
+        ->assertSessionHasNoErrors()
+        ->assertRedirect("/sessions/{$session->id}");
+});
+
+test('title is required to create a session', function () {
+    Storage::fake('public');
+    $user = User::factory()->create();
+
+    $response = $this
+        ->actingAs($user)
+        ->post('/sessions', [
+            'title' => '',
+            'image' => UploadedFile::fake()->create('conta.jpg', 100, 'image/jpeg'),
+        ]);
+
+    $response->assertSessionHasErrors('title');
+    expect(Session::count())->toBe(0);
+});
+
+test('a receipt photo is required to create a session', function () {
+    $user = User::factory()->create();
+
+    $response = $this
+        ->actingAs($user)
+        ->post('/sessions', [
+            'title' => 'Jantar de quinta',
+        ]);
+
+    $response->assertSessionHasErrors('image');
+    expect(Session::count())->toBe(0);
+});
+
+test('the receipt photo must be an accepted image type', function () {
+    $user = User::factory()->create();
+
+    $response = $this
+        ->actingAs($user)
+        ->post('/sessions', [
+            'title' => 'Jantar de quinta',
+            'image' => UploadedFile::fake()->create('conta.pdf', 100, 'application/pdf'),
+        ]);
+
+    $response->assertSessionHasErrors('image');
+    expect(Session::count())->toBe(0);
+});
+
+test('the owner can view their session', function () {
+    $user = User::factory()->create();
+    $session = Session::factory()->for($user)->create();
+
+    $response = $this
+        ->actingAs($user)
+        ->get("/sessions/{$session->id}");
+
+    $response->assertOk();
+});
+
+test('a user cannot view a session that is not theirs', function () {
+    $owner = User::factory()->create();
+    $intruder = User::factory()->create();
+    $session = Session::factory()->for($owner)->create();
+
+    $response = $this
+        ->actingAs($intruder)
+        ->get("/sessions/{$session->id}");
+
+    $response->assertForbidden();
+});
+
+test('guest cannot view a session', function () {
+    $session = Session::factory()->for(User::factory())->create();
+
+    $response = $this->get("/sessions/{$session->id}");
+
+    $response->assertRedirect('/login');
+});

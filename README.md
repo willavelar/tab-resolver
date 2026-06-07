@@ -79,9 +79,13 @@ docker compose exec app php artisan key:generate
 docker compose exec app php artisan migrate --seed
 ```
 
-Access: **http://localhost**
+Access: **http://localhost:8080** (override with `FORWARD_APP_PORT` in `.env`).
 
-## Running locally
+## Running locally (not recommended)
+
+> Docker is the supported workflow — prefer it. Running on the host requires a
+> matching PHP 8.3 + **Node ≥ 20.19** toolchain; an older host Node will fail to
+> build the Vite 8 assets.
 
 ```bash
 # Install PHP dependencies
@@ -131,27 +135,31 @@ REDIS_PORT=6379
 
 ## Useful commands
 
+> Run everything inside the `app` container — including Node/npm. The host Node is
+> often too old for Vite 8 (needs ≥ 20.19); the container ships Node 20.
+
 ```bash
 # Start the full stack (server + queue + logs + Vite)
-composer run dev
+docker compose exec app composer run dev
 
 # Run migrations
-php artisan migrate
+docker compose exec app php artisan migrate
 
 # Fresh migration with seed
-php artisan migrate:fresh --seed
+docker compose exec app php artisan migrate:fresh --seed
 
-# Run tests (SQLite in-memory — no Docker required)
-composer run test
+# Run tests (SQLite in-memory — no external services needed)
+docker compose exec app composer run test
 
 # Run a specific test
-php artisan test --filter=ExampleTest
+docker compose exec app php artisan test --filter=ExampleTest
 
 # Code style (Pint)
-./vendor/bin/pint
+docker compose exec app ./vendor/bin/pint
 
-# Build frontend assets
-npm run build
+# Install JS dependencies and build frontend assets
+docker compose exec app npm install
+docker compose exec app npm run build
 ```
 
 ## Architecture

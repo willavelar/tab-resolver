@@ -29,19 +29,19 @@ const submit = () => {
 
     <AuthenticatedLayout>
         <template #header>
-            <div class="flex items-center gap-3">
+            <div class="flex items-center justify-between gap-3">
+                <h2 class="text-xl font-semibold tracking-tight text-ink">Nova Sessão</h2>
                 <Link
                     :href="route('dashboard')"
-                    class="text-muted hover:text-ink transition-colors"
+                    class="inline-flex items-center justify-center rounded-md border border-hairline-strong bg-surface-card px-[17px] py-2.5 text-sm font-medium text-ink transition-colors duration-150 hover:bg-canvas-soft focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-canvas"
                 >
                     ← Voltar
                 </Link>
-                <h2 class="text-xl font-semibold tracking-tight text-ink">Nova Sessão</h2>
             </div>
         </template>
 
         <div class="py-12">
-            <div class="max-w-lg mx-auto sm:px-6 lg:px-8">
+            <div class="w-full px-4 sm:px-6 lg:px-8">
                 <div class="rounded-lg border border-hairline bg-surface-card p-8">
                     <form @submit.prevent="submit" class="space-y-6">
                         <div>
