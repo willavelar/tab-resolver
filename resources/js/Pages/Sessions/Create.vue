@@ -41,7 +41,7 @@ const submit = () => {
         </template>
 
         <div class="py-12">
-            <div class="w-full px-4 sm:px-6 lg:px-8">
+            <div class="max-w-lg mx-auto sm:px-6 lg:px-8">
                 <div class="rounded-lg border border-hairline bg-surface-card p-8">
                     <form @submit.prevent="submit" class="space-y-6">
                         <div>

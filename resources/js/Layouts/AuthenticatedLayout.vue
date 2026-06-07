@@ -14,8 +14,6 @@ const showingNavigationDropdown = ref(false);
 <template>
     <div>
         <div class="min-h-screen bg-canvas">
-            <slot name="banner" />
-
             <nav
                 class="border-b border-hairline bg-surface-card"
             >
