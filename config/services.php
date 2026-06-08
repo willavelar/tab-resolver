@@ -35,8 +35,9 @@ return [
         ],
     ],
 
-    'anthropic' => [
-        'receipt_model' => env('ANTHROPIC_RECEIPT_MODEL', 'claude-sonnet-4-5-20250929'),
+    'openai' => [
+        'receipt_model' => env('OPENAI_RECEIPT_MODEL', 'gpt-4o-mini'),
+        'audio_model' => env('OPENAI_AUDIO_MODEL', 'whisper-1'),
     ],
 
 ];
