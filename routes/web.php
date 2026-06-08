@@ -28,6 +28,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/sessions/{session}/extract', [SessionController::class, 'extract'])
         ->name('sessions.extract');
 
+    Route::post('/sessions/{session}/clarify', [SessionController::class, 'clarify'])
+        ->name('sessions.clarify');
+
     Route::get('/sessions/{session}', [SessionController::class, 'show'])
         ->name('sessions.show');
 

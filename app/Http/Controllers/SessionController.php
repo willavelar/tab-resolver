@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\ExtractionStatus;
 use App\Events\ReceiptExtractionUpdated;
+use App\Http\Requests\ClarifyExtractionRequest;
 use App\Http\Requests\StoreSessionRequest;
 use App\Jobs\ExtractReceiptItems;
 use App\Models\Session;
@@ -37,11 +38,55 @@ class SessionController extends Controller
     {
         abort_unless($session->user_id === auth()->id(), 403);
         abort_if(
-            in_array($session->status, [ExtractionStatus::Processing, ExtractionStatus::Completed], true),
+            in_array($session->status, [
+                ExtractionStatus::Processing,
+                ExtractionStatus::Completed,
+                ExtractionStatus::NeedsClarification,
+            ], true),
             403,
         );
 
-        $session->update(['status' => ExtractionStatus::Processing, 'failure_reason' => null]);
+        $session->update([
+            'status' => ExtractionStatus::Processing,
+            'failure_reason' => null,
+            'clarifications' => null,
+        ]);
+
+        event(new ReceiptExtractionUpdated($session->id, ExtractionStatus::Processing->value));
+
+        ExtractReceiptItems::dispatch($session);
+
+        return redirect()->route('sessions.show', $session);
+    }
+
+    public function clarify(ClarifyExtractionRequest $request, Session $session): RedirectResponse
+    {
+        abort_unless($session->user_id === auth()->id(), 403);
+        abort_unless($session->status === ExtractionStatus::NeedsClarification, 403);
+
+        $clarifications = $session->clarifications ?? [];
+        $answered = $clarifications['answered'] ?? [];
+        $answers = $request->validated('answers');
+
+        foreach ($clarifications['pending'] ?? [] as $question) {
+            if (! array_key_exists($question['id'], $answers)) {
+                continue;
+            }
+
+            $answered[] = [
+                'question' => $question['prompt'],
+                'answer' => $answers[$question['id']],
+            ];
+        }
+
+        $session->update([
+            'status' => ExtractionStatus::Processing,
+            'clarifications' => [
+                'round' => ($clarifications['round'] ?? 0) + 1,
+                'answered' => $answered,
+                'pending' => [],
+            ],
+        ]);
 
         event(new ReceiptExtractionUpdated($session->id, ExtractionStatus::Processing->value));
 

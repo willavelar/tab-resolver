@@ -260,3 +260,56 @@ test('the job forces a final result once the round cap is reached', function () 
 
     expect($session->status)->toBe(ExtractionStatus::Completed);
 });
+
+test('the owner can answer clarification questions and re-dispatch', function () {
+    Queue::fake();
+    $owner = User::factory()->create();
+    $session = Session::factory()->for($owner)->create([
+        'status' => ExtractionStatus::NeedsClarification,
+        'clarifications' => [
+            'round' => 0,
+            'answered' => [],
+            'pending' => [['id' => 'q1', 'prompt' => 'Caipirinha é Comida ou Bebida?', 'type' => 'choice', 'options' => ['Comida', 'Bebida']]],
+        ],
+    ]);
+
+    $this->actingAs($owner)
+        ->post("/sessions/{$session->id}/clarify", ['answers' => ['q1' => 'Bebida']])
+        ->assertRedirect("/sessions/{$session->id}");
+
+    $session->refresh();
+
+    expect($session->status)->toBe(ExtractionStatus::Processing)
+        ->and($session->clarifications['round'])->toBe(1)
+        ->and($session->clarifications['answered'])->toHaveCount(1)
+        ->and($session->clarifications['answered'][0]['question'])->toBe('Caipirinha é Comida ou Bebida?')
+        ->and($session->clarifications['answered'][0]['answer'])->toBe('Bebida');
+
+    Queue::assertPushed(ExtractReceiptItems::class);
+});
+
+test('clarify is rejected unless the session is awaiting clarification', function () {
+    Queue::fake();
+    $owner = User::factory()->create();
+    $session = Session::factory()->for($owner)->create(['status' => ExtractionStatus::Completed]);
+
+    $this->actingAs($owner)
+        ->post("/sessions/{$session->id}/clarify", ['answers' => ['q1' => 'Bebida']])
+        ->assertForbidden();
+
+    Queue::assertNothingPushed();
+});
+
+test('a non-owner cannot answer clarification questions', function () {
+    Queue::fake();
+    $session = Session::factory()->for(User::factory())->create([
+        'status' => ExtractionStatus::NeedsClarification,
+        'clarifications' => ['round' => 0, 'answered' => [], 'pending' => [['id' => 'q1', 'prompt' => 'x', 'type' => 'text', 'options' => []]]],
+    ]);
+
+    $this->actingAs(User::factory()->create())
+        ->post("/sessions/{$session->id}/clarify", ['answers' => ['q1' => 'y']])
+        ->assertForbidden();
+
+    Queue::assertNothingPushed();
+});
