@@ -83,7 +83,10 @@ test('the job persists items and totals and marks the session completed', functi
         ->and((float) $session->service_charge)->toBe(5.0)
         ->and((float) $session->total)->toBe(55.0)
         ->and($session->items()->count())->toBe(2)
-        ->and($session->raw_extraction)->toBeArray();
+        ->and($session->raw_extraction)->toBeArray()
+        ->and((float) $session->service_charge_percentage)->toBe(10.0)
+        ->and($session->items()->where('category', 'drink')->count())->toBe(1)
+        ->and($session->items()->where('category', 'food')->count())->toBe(1);
 
     Event::assertDispatched(ReceiptExtractionUpdated::class, function ($e) use ($session) {
         return $e->sessionId === $session->id && $e->status === ExtractionStatus::Completed->value;
@@ -94,7 +97,7 @@ test('the job marks the session failed when extraction throws', function () {
     Event::fake();
     $this->app->instance(ReceiptExtractor::class, new class implements ReceiptExtractor
     {
-        public function extract(string $absoluteImagePath): ExtractionResult
+        public function extract(string $absoluteImagePath, array $answered = [], bool $forceFinal = false): ExtractionResult
         {
             throw new RuntimeException('boom');
         }
@@ -202,4 +205,58 @@ test('session item casts category and session casts new extraction fields', func
         ->and((float) $session->service_charge_percentage)->toBe(10.0)
         ->and($session->clarifications)->toBeArray()
         ->and($session->clarifications['round'])->toBe(1);
+});
+
+test('the job parks the session for clarification when the model asks', function () {
+    Event::fake();
+    $this->app->instance(ReceiptExtractor::class, new class implements ReceiptExtractor
+    {
+        public function extract(string $absoluteImagePath, array $answered = [], bool $forceFinal = false): ExtractionResult
+        {
+            return ExtractionResult::requestInput(
+                questions: [['id' => 'q1', 'prompt' => 'Caipirinha é Comida ou Bebida?', 'type' => 'choice', 'options' => ['Comida', 'Bebida']]],
+                raw: ['status' => 'needs_input'],
+            );
+        }
+    });
+
+    $session = Session::factory()->for(User::factory())->create([
+        'status' => ExtractionStatus::Processing,
+        'image_path' => 'receipts/example.jpg',
+    ]);
+
+    ExtractReceiptItems::dispatchSync($session);
+    $session->refresh();
+
+    expect($session->status)->toBe(ExtractionStatus::NeedsClarification)
+        ->and($session->items()->count())->toBe(0)
+        ->and($session->clarifications['pending'])->toHaveCount(1)
+        ->and($session->clarifications['pending'][0]['id'])->toBe('q1');
+
+    Event::assertDispatched(ReceiptExtractionUpdated::class, function ($e) use ($session) {
+        return $e->sessionId === $session->id && $e->status === ExtractionStatus::NeedsClarification->value;
+    });
+});
+
+test('the job forces a final result once the round cap is reached', function () {
+    Event::fake();
+    $this->app->instance(ReceiptExtractor::class, new class implements ReceiptExtractor
+    {
+        public function extract(string $absoluteImagePath, array $answered = [], bool $forceFinal = false): ExtractionResult
+        {
+            // Would keep asking, but on the final round the job ignores questions.
+            return ExtractionResult::requestInput(questions: [['id' => 'q1', 'prompt' => 'x', 'type' => 'text', 'options' => []]], raw: []);
+        }
+    });
+
+    $session = Session::factory()->for(User::factory())->create([
+        'status' => ExtractionStatus::Processing,
+        'image_path' => 'receipts/example.jpg',
+        'clarifications' => ['round' => 2, 'answered' => [], 'pending' => []],
+    ]);
+
+    ExtractReceiptItems::dispatchSync($session);
+    $session->refresh();
+
+    expect($session->status)->toBe(ExtractionStatus::Completed);
 });

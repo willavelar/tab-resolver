@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Enums\ExtractionStatus;
 use App\Events\ReceiptExtractionUpdated;
 use App\Models\Session;
+use App\Services\Receipt\ExtractionResult;
 use App\Services\Receipt\ReceiptExtractor;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -17,6 +18,9 @@ use Throwable;
 class ExtractReceiptItems implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    /** Hard cap on clarification rounds before forcing a final result. */
+    public const MAX_ROUNDS = 2;
 
     public int $tries = 3;
 
@@ -39,9 +43,34 @@ class ExtractReceiptItems implements ShouldQueue
 
     public function handle(ReceiptExtractor $extractor): void
     {
+        $clarifications = $this->session->clarifications ?? [];
+        $answered = $clarifications['answered'] ?? [];
+        $round = $clarifications['round'] ?? 0;
+        $forceFinal = $round >= self::MAX_ROUNDS;
+
         $absolutePath = Storage::disk('public')->path($this->session->image_path);
 
-        $result = $extractor->extract($absolutePath);
+        $result = $extractor->extract($absolutePath, $answered, $forceFinal);
+
+        if ($result->needsInput() && ! $forceFinal) {
+            $this->session->forceFill([
+                'status' => ExtractionStatus::NeedsClarification,
+                'clarifications' => [
+                    'round' => $round,
+                    'answered' => $answered,
+                    'pending' => $result->questions,
+                ],
+                'raw_extraction' => $result->raw,
+                'failure_reason' => null,
+            ])->save();
+
+            event(new ReceiptExtractionUpdated(
+                $this->session->id,
+                ExtractionStatus::NeedsClarification->value,
+            ));
+
+            return;
+        }
 
         $this->session->items()->delete();
 
@@ -51,6 +80,7 @@ class ExtractReceiptItems implements ShouldQueue
                 'quantity' => $item['quantity'],
                 'unit_price' => $item['unit_price'],
                 'total_price' => $item['total_price'],
+                'category' => $item['category'],
                 'position' => $index + 1,
             ]);
         }
@@ -59,8 +89,10 @@ class ExtractReceiptItems implements ShouldQueue
             'status' => ExtractionStatus::Completed,
             'subtotal' => $result->subtotal,
             'service_charge' => $result->serviceCharge,
+            'service_charge_percentage' => $result->serviceChargePercentage ?? $this->derivePercentage($result),
             'total' => $result->total,
             'raw_extraction' => $result->raw,
+            'clarifications' => null,
             'processed_at' => now(),
             'failure_reason' => null,
         ])->save();
@@ -83,5 +115,17 @@ class ExtractReceiptItems implements ShouldQueue
             ExtractionStatus::Failed->value,
             $exception->getMessage(),
         ));
+    }
+
+    /**
+     * Derive the tip percentage when only the absolute charge is known.
+     */
+    private function derivePercentage(ExtractionResult $result): ?float
+    {
+        if ($result->subtotal > 0 && $result->serviceCharge > 0) {
+            return round($result->serviceCharge / $result->subtotal * 100, 2);
+        }
+
+        return null;
     }
 }
