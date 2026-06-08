@@ -16,9 +16,12 @@ class SessionParticipant extends Model
     protected $fillable = [
         'bill_session_id',
         'name',
+        'submitter_token',
         'text',
         'audio_path',
         'audio_duration',
+        'ip_address',
+        'user_agent',
     ];
 
     protected function casts(): array
