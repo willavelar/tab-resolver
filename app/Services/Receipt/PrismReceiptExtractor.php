@@ -7,6 +7,7 @@ use Illuminate\Support\Str;
 use Prism\Prism\Enums\Provider;
 use Prism\Prism\Facades\Prism;
 use Prism\Prism\Schema\ArraySchema;
+use Prism\Prism\Schema\EnumSchema;
 use Prism\Prism\Schema\NumberSchema;
 use Prism\Prism\Schema\ObjectSchema;
 use Prism\Prism\Schema\StringSchema;
@@ -21,7 +22,7 @@ class PrismReceiptExtractor implements ReceiptExtractor
             name: 'receipt',
             description: 'Resultado da leitura da conta: itens finais OU perguntas quando houver dúvida',
             properties: [
-                new StringSchema('status', 'Use "needs_input" se tiver QUALQUER dúvida; senão "complete" (valores permitidos: complete, needs_input)'),
+                new EnumSchema('status', 'Use "needs_input" se tiver QUALQUER dúvida; senão "complete"', ['complete', 'needs_input']),
                 new ArraySchema(
                     name: 'questions',
                     description: 'Perguntas ao usuário quando status = needs_input (senão lista vazia)',
@@ -31,7 +32,7 @@ class PrismReceiptExtractor implements ReceiptExtractor
                         properties: [
                             new StringSchema('id', 'Identificador curto e único da pergunta (ex.: q1)'),
                             new StringSchema('prompt', 'A pergunta em português'),
-                            new StringSchema('type', 'choice para escolha entre opções, text para resposta livre (valores permitidos: choice, text)'),
+                            new EnumSchema('type', 'choice para escolha entre opções, text para resposta livre', ['choice', 'text']),
                             new ArraySchema('options', 'Opções quando type = choice (senão vazio)', new StringSchema('option', 'Uma opção')),
                         ],
                         requiredFields: ['id', 'prompt', 'type'],
@@ -48,7 +49,7 @@ class PrismReceiptExtractor implements ReceiptExtractor
                             new NumberSchema('quantity', 'Quantidade do item'),
                             new NumberSchema('unit_price', 'Preço unitário do item'),
                             new NumberSchema('total_price', 'Preço total da linha (quantidade x unitário)'),
-                            new StringSchema('category', 'food para comida, drink para bebida (valores permitidos: food, drink)'),
+                            new EnumSchema('category', 'food para comida, drink para bebida', ['food', 'drink']),
                         ],
                         requiredFields: ['name', 'quantity', 'unit_price', 'total_price', 'category'],
                     ),
