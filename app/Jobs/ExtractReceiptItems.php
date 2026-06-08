@@ -21,6 +21,13 @@ class ExtractReceiptItems implements ShouldQueue
     public int $tries = 3;
 
     /**
+     * Vision API calls can take a while; keep this above the worker default (60s)
+     * so a slow extraction is not SIGKILL'd (which would leave the session stuck
+     * in "processing" because failed() never runs on a kill).
+     */
+    public int $timeout = 120;
+
+    /**
      * @return array<int, int>
      */
     public function backoff(): array
