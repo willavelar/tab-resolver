@@ -67,4 +67,13 @@ class Session extends Model
     {
         return $this->hasMany(SessionItem::class, 'bill_session_id')->orderBy('position');
     }
+
+    /**
+     * @return HasMany<SessionParticipant, $this>
+     */
+    public function participants(): HasMany
+    {
+        return $this->hasMany(SessionParticipant::class, 'bill_session_id')
+            ->orderBy('created_at');
+    }
 }

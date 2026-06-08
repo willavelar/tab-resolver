@@ -16,3 +16,16 @@ test('each session gets a distinct public token', function () {
 
     expect($a->public_token)->not->toBe($b->public_token);
 });
+
+test('a session has many participants ordered oldest first', function () {
+    $session = Session::factory()->for(User::factory())->create();
+
+    $first = $session->participants()->create(['name' => 'Ana', 'text' => 'Pizza']);
+    $second = $session->participants()->create(['name' => 'Bia', 'text' => 'Suco']);
+
+    $names = $session->fresh()->participants->pluck('name')->all();
+
+    expect($names)->toBe(['Ana', 'Bia'])
+        ->and($first->bill_session_id)->toBe($session->id)
+        ->and($second->id)->not->toBe($first->id);
+});
