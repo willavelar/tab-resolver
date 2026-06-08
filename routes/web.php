@@ -4,6 +4,7 @@
 
 use App\Http\Controllers\IntegrationController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\PublicSessionController;
 use App\Http\Controllers\SessionController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -41,5 +42,11 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
+
+Route::get('/c/{token}', [PublicSessionController::class, 'show'])
+    ->name('public.sessions.show');
+
+Route::post('/c/{token}/participants', [PublicSessionController::class, 'store'])
+    ->name('public.participants.store');
 
 require __DIR__.'/auth.php';

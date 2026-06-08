@@ -29,3 +29,17 @@ test('a session has many participants ordered oldest first', function () {
         ->and($first->bill_session_id)->toBe($session->id)
         ->and($second->id)->not->toBe($first->id);
 });
+
+test('the public page opens without auth for a valid token', function () {
+    $session = Session::factory()->for(User::factory())->create(['title' => 'Bar do Zé']);
+
+    $response = $this->get("/c/{$session->public_token}");
+
+    $response->assertOk();
+});
+
+test('an invalid public token returns 404', function () {
+    $response = $this->get('/c/does-not-exist');
+
+    $response->assertNotFound();
+});
