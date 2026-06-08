@@ -40,6 +40,12 @@ const triggerExtraction = () => {
 
 const clarifyForm = useForm({ answers: {} });
 
+const allClarificationsAnswered = computed(() =>
+    (props.session.clarifications?.pending ?? []).every(
+        (q) => `${clarifyForm.answers[q.id] ?? ''}`.trim() !== '',
+    ),
+);
+
 const submitClarifications = () => {
     clarifyForm.post(route('sessions.clarify', props.session.id), {
         preserveScroll: true,
@@ -270,7 +276,7 @@ onBeforeUnmount(() => {
                                 <button
                                     type="submit"
                                     class="inline-flex items-center justify-center gap-1.5 rounded-md border border-transparent bg-primary px-[18px] py-2.5 text-sm font-medium text-on-primary transition-colors duration-150 hover:bg-primary-active focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-canvas disabled:opacity-50"
-                                    :disabled="clarifyForm.processing"
+                                    :disabled="clarifyForm.processing || !allClarificationsAnswered"
                                 >
                                     Enviar respostas
                                 </button>

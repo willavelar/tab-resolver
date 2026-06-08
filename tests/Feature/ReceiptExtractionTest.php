@@ -313,3 +313,26 @@ test('a non-owner cannot answer clarification questions', function () {
 
     Queue::assertNothingPushed();
 });
+
+test('clarify rejects an incomplete set of answers and keeps the session waiting', function () {
+    Queue::fake();
+    $owner = User::factory()->create();
+    $session = Session::factory()->for($owner)->create([
+        'status' => ExtractionStatus::NeedsClarification,
+        'clarifications' => [
+            'round' => 0,
+            'answered' => [],
+            'pending' => [
+                ['id' => 'q1', 'prompt' => 'Caipirinha é Comida ou Bebida?', 'type' => 'choice', 'options' => ['Comida', 'Bebida']],
+                ['id' => 'q2', 'prompt' => 'Qual o preço do Couvert?', 'type' => 'text', 'options' => []],
+            ],
+        ],
+    ]);
+
+    $this->actingAs($owner)
+        ->post("/sessions/{$session->id}/clarify", ['answers' => ['q1' => 'Bebida']])
+        ->assertSessionHasErrors('answers.q2');
+
+    expect($session->fresh()->status)->toBe(ExtractionStatus::NeedsClarification);
+    Queue::assertNothingPushed();
+});
