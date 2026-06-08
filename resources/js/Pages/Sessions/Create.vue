@@ -6,9 +6,10 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { onBeforeUnmount, ref } from 'vue';
 
 const imageInput = ref(null);
+const imagePreview = ref(null);
 
 const form = useForm({
     title: '',
@@ -16,8 +17,25 @@ const form = useForm({
 });
 
 const handleImage = (e) => {
-    form.image = e.target.files[0];
+    const file = e.target.files[0];
+
+    if (imagePreview.value) {
+        URL.revokeObjectURL(imagePreview.value);
+        imagePreview.value = null;
+    }
+
+    form.image = file ?? null;
+
+    if (file) {
+        imagePreview.value = URL.createObjectURL(file);
+    }
 };
+
+onBeforeUnmount(() => {
+    if (imagePreview.value) {
+        URL.revokeObjectURL(imagePreview.value);
+    }
+});
 
 const submit = () => {
     form.post(route('sessions.store'), { forceFormData: true });
@@ -70,7 +88,11 @@ const submit = () => {
                                     <p class="text-xs text-muted mt-1">JPG, PNG ou HEIC</p>
                                 </template>
                                 <template v-else>
-                                    <div class="text-4xl mb-3">✅</div>
+                                    <img
+                                        :src="imagePreview"
+                                        alt="Pré-visualização da conta"
+                                        class="mb-3 max-h-64 w-auto rounded-md border border-hairline object-contain"
+                                    />
                                     <p class="text-sm font-medium text-ink">{{ form.image.name }}</p>
                                     <p class="text-xs text-muted mt-1">Clique para trocar</p>
                                 </template>
