@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\ExtractionStatus;
+use App\Enums\ItemCategory;
 use App\Events\ReceiptExtractionUpdated;
 use App\Jobs\ExtractReceiptItems;
 use App\Models\Session;
@@ -162,4 +163,11 @@ test('a failed extraction can be retried', function () {
         ->assertRedirect("/sessions/{$session->id}");
 
     Queue::assertPushed(ExtractReceiptItems::class);
+});
+
+test('item category enum exposes pt-br labels', function () {
+    expect(ItemCategory::Food->value)->toBe('food')
+        ->and(ItemCategory::Drink->value)->toBe('drink')
+        ->and(ItemCategory::Food->label())->toBe('Comida')
+        ->and(ItemCategory::Drink->label())->toBe('Bebida');
 });
