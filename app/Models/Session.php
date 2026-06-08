@@ -25,8 +25,10 @@ class Session extends Model
         'status',
         'subtotal',
         'service_charge',
+        'service_charge_percentage',
         'total',
         'raw_extraction',
+        'clarifications',
         'processed_at',
         'failure_reason',
     ];
@@ -37,8 +39,10 @@ class Session extends Model
             'status' => ExtractionStatus::class,
             'subtotal' => 'decimal:2',
             'service_charge' => 'decimal:2',
+            'service_charge_percentage' => 'decimal:2',
             'total' => 'decimal:2',
             'raw_extraction' => 'array',
+            'clarifications' => 'array',
             'processed_at' => 'datetime',
         ];
     }

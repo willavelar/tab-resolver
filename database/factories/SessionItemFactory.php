@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\ItemCategory;
 use App\Models\Session;
 use App\Models\SessionItem;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -22,6 +23,7 @@ class SessionItemFactory extends Factory
             'quantity' => $quantity,
             'unit_price' => $unit,
             'total_price' => round($quantity * $unit, 2),
+            'category' => fake()->randomElement([ItemCategory::Food, ItemCategory::Drink]),
             'position' => fake()->numberBetween(1, 20),
         ];
     }

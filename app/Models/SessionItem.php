@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ItemCategory;
 use Database\Factories\SessionItemFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -19,6 +20,7 @@ class SessionItem extends Model
         'quantity',
         'unit_price',
         'total_price',
+        'category',
         'position',
     ];
 
@@ -28,6 +30,7 @@ class SessionItem extends Model
             'quantity' => 'decimal:2',
             'unit_price' => 'decimal:2',
             'total_price' => 'decimal:2',
+            'category' => ItemCategory::class,
             'position' => 'integer',
         ];
     }

@@ -175,3 +175,27 @@ test('item category enum exposes pt-br labels', function () {
 test('extraction status has a needs_clarification case', function () {
     expect(ExtractionStatus::NeedsClarification->value)->toBe('needs_clarification');
 });
+
+test('session item casts category and session casts new extraction fields', function () {
+    $session = Session::factory()->for(User::factory())->create([
+        'service_charge_percentage' => 10,
+        'clarifications' => ['round' => 1, 'answered' => [], 'pending' => []],
+    ]);
+
+    $item = SessionItem::create([
+        'bill_session_id' => $session->id,
+        'name' => 'Heineken',
+        'quantity' => 2,
+        'unit_price' => 9.90,
+        'total_price' => 19.80,
+        'category' => ItemCategory::Drink,
+        'position' => 1,
+    ]);
+
+    $session->refresh();
+
+    expect($item->fresh()->category)->toBe(ItemCategory::Drink)
+        ->and((float) $session->service_charge_percentage)->toBe(10.0)
+        ->and($session->clarifications)->toBeArray()
+        ->and($session->clarifications['round'])->toBe(1);
+});
