@@ -1,8 +1,8 @@
 <!-- resources/js/Pages/Sessions/Show.vue -->
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, Link } from '@inertiajs/vue3';
-import { computed, onMounted, ref } from 'vue';
+import { Head, Link, router } from '@inertiajs/vue3';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
 const props = defineProps({
     session: {
@@ -15,10 +15,7 @@ const shareUrl = computed(() => route('sessions.show', props.session.id));
 
 const copied = ref(false);
 const canShare = ref(false);
-
-onMounted(() => {
-    canShare.value = typeof navigator !== 'undefined' && !!navigator.share;
-});
+const extracting = ref(false);
 
 const copyLink = async () => {
     try {
@@ -41,6 +38,51 @@ const shareLink = async () => {
         // Usuário cancelou a folha de compartilhamento — ignorado.
     }
 };
+
+const triggerExtraction = () => {
+    router.post(
+        route('sessions.extract', props.session.id),
+        {},
+        {
+            preserveScroll: true,
+            onStart: () => (extracting.value = true),
+            onFinish: () => (extracting.value = false),
+        },
+    );
+};
+
+const brl = (value) =>
+    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+        Number(value ?? 0),
+    );
+
+let channel = null;
+
+const channelName = `bill-session.${props.session.id}`;
+
+const subscribe = () => {
+    if (!window.Echo || channel) {
+        return;
+    }
+    channel = window.Echo.private(channelName);
+    channel.listen('.extraction.updated', () => {
+        router.reload({ only: ['session'] });
+    });
+};
+
+onMounted(() => {
+    canShare.value = typeof navigator !== 'undefined' && !!navigator.share;
+    if (props.session.status === 'processing') {
+        subscribe();
+    }
+});
+
+onBeforeUnmount(() => {
+    if (channel) {
+        window.Echo.leave(channelName);
+        channel = null;
+    }
+});
 </script>
 
 <template>
@@ -103,10 +145,95 @@ const shareLink = async () => {
                         />
                     </div>
 
-                    <div class="mt-6 rounded-md border border-hairline bg-surface-strong p-4">
-                        <p class="text-sm text-body">
-                            ✨ Em breve a IA irá ler os itens desta conta automaticamente.
-                        </p>
+                    <div class="mt-6">
+                        <!-- pending -->
+                        <div
+                            v-if="session.status === 'pending'"
+                            class="rounded-md border border-hairline bg-surface-strong p-4 text-center"
+                        >
+                            <p class="text-sm text-body">Pronto para ler os itens desta conta com IA.</p>
+                            <button
+                                type="button"
+                                class="mt-3 inline-flex items-center justify-center gap-1.5 rounded-md border border-transparent bg-primary px-[18px] py-2.5 text-sm font-medium text-on-primary transition-colors duration-150 hover:bg-primary-active focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-canvas disabled:opacity-50"
+                                :disabled="extracting"
+                                @click="triggerExtraction"
+                            >
+                                ✨ Ler conta com IA
+                            </button>
+                        </div>
+
+                        <!-- processing -->
+                        <div
+                            v-else-if="session.status === 'processing'"
+                            class="flex items-center justify-center gap-3 rounded-md border border-hairline bg-surface-strong p-4"
+                        >
+                            <svg class="h-5 w-5 animate-spin text-primary" viewBox="0 0 24 24" fill="none">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                            </svg>
+                            <p class="text-sm text-body">Lendo a conta... isso pode levar alguns segundos.</p>
+                        </div>
+
+                        <!-- failed -->
+                        <div
+                            v-else-if="session.status === 'failed'"
+                            class="rounded-md border border-error bg-surface-strong p-4 text-center"
+                        >
+                            <p class="text-sm text-error">
+                                Não foi possível ler a conta{{ session.failure_reason ? `: ${session.failure_reason}` : '' }}.
+                            </p>
+                            <button
+                                type="button"
+                                class="mt-3 inline-flex items-center justify-center gap-1.5 rounded-md border border-hairline-strong bg-surface-card px-[17px] py-2.5 text-sm font-medium text-ink transition-colors duration-150 hover:bg-canvas-soft focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-canvas disabled:opacity-50"
+                                :disabled="extracting"
+                                @click="triggerExtraction"
+                            >
+                                Tentar novamente
+                            </button>
+                        </div>
+
+                        <!-- completed -->
+                        <div v-else-if="session.status === 'completed'">
+                            <h3 class="text-sm font-semibold text-ink">Itens da conta</h3>
+                            <div class="mt-3 overflow-hidden rounded-md border border-hairline">
+                                <table class="w-full text-sm">
+                                    <thead class="bg-surface-strong text-muted">
+                                        <tr>
+                                            <th class="px-3 py-2 text-left font-medium">Item</th>
+                                            <th class="px-3 py-2 text-right font-medium">Qtd</th>
+                                            <th class="px-3 py-2 text-right font-medium">Unit.</th>
+                                            <th class="px-3 py-2 text-right font-medium">Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr
+                                            v-for="item in session.items"
+                                            :key="item.id"
+                                            class="border-t border-hairline"
+                                        >
+                                            <td class="px-3 py-2 text-ink">{{ item.name }}</td>
+                                            <td class="px-3 py-2 text-right text-body">{{ Number(item.quantity) }}</td>
+                                            <td class="px-3 py-2 text-right text-body">{{ brl(item.unit_price) }}</td>
+                                            <td class="px-3 py-2 text-right text-body">{{ brl(item.total_price) }}</td>
+                                        </tr>
+                                    </tbody>
+                                    <tfoot class="border-t border-hairline-strong">
+                                        <tr>
+                                            <td class="px-3 py-2 text-right text-muted" colspan="3">Subtotal</td>
+                                            <td class="px-3 py-2 text-right text-body">{{ brl(session.subtotal) }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-3 py-2 text-right text-muted" colspan="3">Taxa de serviço</td>
+                                            <td class="px-3 py-2 text-right text-body">{{ brl(session.service_charge) }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-3 py-2 text-right font-semibold text-ink" colspan="3">Total</td>
+                                            <td class="px-3 py-2 text-right font-semibold text-ink">{{ brl(session.total) }}</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
