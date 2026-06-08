@@ -108,17 +108,19 @@ test('a participant submission requires text or audio', function () {
     expect(SessionParticipant::count())->toBe(0);
 });
 
-test('duplicate names are rejected case-insensitively per session', function () {
+test('two different devices may use the same name', function () {
+    Event::fake([ParticipantSubmitted::class]);
     $session = Session::factory()->for(User::factory())->create();
-    $session->participants()->create(['name' => 'Ana', 'text' => 'Pizza']);
 
-    $response = $this->post("/c/{$session->public_token}/participants", [
-        'name' => '  ana  ',
-        'text' => 'Outra coisa',
-    ]);
+    $this->withUnencryptedCookie('tr_pid', 'device-a')
+        ->post("/c/{$session->public_token}/participants", ['name' => 'Ana', 'text' => 'Pizza'])
+        ->assertSessionHasNoErrors();
 
-    $response->assertSessionHasErrors('name');
-    expect(SessionParticipant::count())->toBe(1);
+    $this->withUnencryptedCookie('tr_pid', 'device-b')
+        ->post("/c/{$session->public_token}/participants", ['name' => 'ana', 'text' => 'Suco'])
+        ->assertSessionHasNoErrors();
+
+    expect(SessionParticipant::count())->toBe(2);
 });
 
 test('text longer than 256 characters is rejected', function () {
