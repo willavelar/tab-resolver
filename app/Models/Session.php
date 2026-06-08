@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 class Session extends Model
 {
@@ -20,6 +21,7 @@ class Session extends Model
     protected $fillable = [
         'title',
         'image_path',
+        'public_token',
         'status',
         'subtotal',
         'service_charge',
@@ -39,6 +41,15 @@ class Session extends Model
             'raw_extraction' => 'array',
             'processed_at' => 'datetime',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::creating(function (Session $session): void {
+            if (empty($session->public_token)) {
+                $session->public_token = Str::random(32);
+            }
+        });
     }
 
     /**
