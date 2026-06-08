@@ -25,8 +25,9 @@ it('forbids non-admin users from updating the integration', function () {
 
     $this->actingAs($user)
         ->patch('/integrations', [
-            'model' => 'claude-sonnet-4-5-20250929',
-            'api_key' => 'sk-ant-nope-0000',
+            'receipt_model' => 'gpt-4o-mini',
+            'audio_model' => 'whisper-1',
+            'api_key' => 'sk-nope-0000',
         ])
         ->assertForbidden();
 
@@ -42,15 +43,17 @@ it('renders the integrations page for authenticated users', function () {
         ->assertInertia(fn ($page) => $page
             ->component('Integrations/Edit')
             ->has('has_api_key')
-            ->has('model')
+            ->has('receipt_model')
+            ->has('audio_model')
         );
 });
 
 it('does not leak the real api key to the frontend', function () {
     Integration::create([
-        'provider' => 'anthropic',
-        'api_key' => 'sk-ant-secret-9876',
-        'model' => 'claude-sonnet-4-5-20250929',
+        'provider' => 'openai',
+        'api_key' => 'sk-secret-9876',
+        'receipt_model' => 'gpt-4o-mini',
+        'audio_model' => 'whisper-1',
     ]);
     $user = User::factory()->admin()->create();
 
@@ -63,42 +66,46 @@ it('does not leak the real api key to the frontend', function () {
         );
 });
 
-it('stores the api key encrypted and the model', function () {
+it('stores the api key encrypted and both models', function () {
     $user = User::factory()->admin()->create();
 
     $this->actingAs($user)
         ->patch('/integrations', [
-            'model' => 'claude-sonnet-4-5-20250929',
-            'api_key' => 'sk-ant-brandnew-0001',
+            'receipt_model' => 'gpt-4o',
+            'audio_model' => 'gpt-4o-transcribe',
+            'api_key' => 'sk-brandnew-0001',
         ])
         ->assertRedirect('/integrations');
 
-    $raw = DB::table('integrations')->where('provider', 'anthropic')->value('api_key');
-    expect($raw)->not->toBe('sk-ant-brandnew-0001');
-    expect(Crypt::decryptString($raw))->toBe('sk-ant-brandnew-0001');
+    $raw = DB::table('integrations')->where('provider', 'openai')->value('api_key');
+    expect($raw)->not->toBe('sk-brandnew-0001');
+    expect(Crypt::decryptString($raw))->toBe('sk-brandnew-0001');
 
     $integration = Integration::current();
-    expect($integration->model)->toBe('claude-sonnet-4-5-20250929');
+    expect($integration->receipt_model)->toBe('gpt-4o');
+    expect($integration->audio_model)->toBe('gpt-4o-transcribe');
 });
 
 it('keeps the existing api key when api_key is left blank', function () {
     Integration::create([
-        'provider' => 'anthropic',
-        'api_key' => 'sk-ant-keepme-5555',
-        'model' => 'old-model',
+        'provider' => 'openai',
+        'api_key' => 'sk-keepme-5555',
+        'receipt_model' => 'gpt-4o-mini',
+        'audio_model' => 'whisper-1',
     ]);
     $user = User::factory()->admin()->create();
 
     $this->actingAs($user)
         ->patch('/integrations', [
-            'model' => 'new-model',
+            'receipt_model' => 'gpt-4o',
+            'audio_model' => 'whisper-1',
             'api_key' => '',
         ])
         ->assertRedirect('/integrations');
 
     $integration = Integration::current();
-    expect($integration->api_key)->toBe('sk-ant-keepme-5555');
-    expect($integration->model)->toBe('new-model');
+    expect($integration->api_key)->toBe('sk-keepme-5555');
+    expect($integration->receipt_model)->toBe('gpt-4o');
 });
 
 it('requires the receipt_model field', function () {

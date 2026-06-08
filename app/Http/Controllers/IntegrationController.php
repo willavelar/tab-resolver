@@ -17,7 +17,8 @@ class IntegrationController extends Controller
         $apiKey = $integration->api_key;
 
         return Inertia::render('Integrations/Edit', [
-            'model' => $integration->model,
+            'receipt_model' => $integration->receipt_model,
+            'audio_model' => $integration->audio_model,
             'has_api_key' => filled($apiKey),
             'api_key_preview' => filled($apiKey)
                 ? '••••••••'.substr($apiKey, -4)
@@ -29,7 +30,8 @@ class IntegrationController extends Controller
     public function update(UpdateIntegrationRequest $request): RedirectResponse
     {
         $integration = Integration::current();
-        $integration->model = $request->validated('model');
+        $integration->receipt_model = $request->validated('receipt_model');
+        $integration->audio_model = $request->validated('audio_model');
 
         if ($request->filled('api_key')) {
             $integration->api_key = $request->validated('api_key');
