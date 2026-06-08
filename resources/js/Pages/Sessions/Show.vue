@@ -1,7 +1,7 @@
 <!-- resources/js/Pages/Sessions/Show.vue -->
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 
 const props = defineProps({
@@ -36,6 +36,15 @@ const triggerExtraction = () => {
             onFinish: () => (extracting.value = false),
         },
     );
+};
+
+const clarifyForm = useForm({ answers: {} });
+
+const submitClarifications = () => {
+    clarifyForm.post(route('sessions.clarify', props.session.id), {
+        preserveScroll: true,
+        onSuccess: () => clarifyForm.reset(),
+    });
 };
 
 const brl = (value) =>
@@ -197,6 +206,57 @@ onBeforeUnmount(() => {
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                             </svg>
                             <p class="text-sm text-body">Lendo a conta... isso pode levar alguns segundos.</p>
+                        </div>
+
+                        <!-- needs clarification -->
+                        <div
+                            v-else-if="session.status === 'needs_clarification'"
+                            class="rounded-md border border-hairline bg-surface-strong p-4"
+                        >
+                            <p class="text-sm font-medium text-ink">A IA tem algumas dúvidas</p>
+                            <p class="mt-1 text-xs text-muted">
+                                Responda para concluir a leitura da conta.
+                            </p>
+
+                            <form class="mt-4 space-y-4" @submit.prevent="submitClarifications">
+                                <div
+                                    v-for="question in (session.clarifications?.pending ?? [])"
+                                    :key="question.id"
+                                >
+                                    <p class="text-sm text-body">{{ question.prompt }}</p>
+
+                                    <div v-if="question.type === 'choice'" class="mt-2 flex flex-wrap gap-2">
+                                        <button
+                                            v-for="option in question.options"
+                                            :key="option"
+                                            type="button"
+                                            class="rounded-md border px-3 py-1.5 text-sm transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-primary"
+                                            :class="clarifyForm.answers[question.id] === option
+                                                ? 'border-primary bg-primary text-on-primary'
+                                                : 'border-hairline-strong bg-surface-card text-ink hover:bg-canvas-soft'"
+                                            @click="clarifyForm.answers[question.id] = option"
+                                        >
+                                            {{ option }}
+                                        </button>
+                                    </div>
+
+                                    <input
+                                        v-else
+                                        v-model="clarifyForm.answers[question.id]"
+                                        type="text"
+                                        class="mt-2 block w-full rounded-md border border-hairline bg-surface-card px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary"
+                                        placeholder="Sua resposta"
+                                    />
+                                </div>
+
+                                <button
+                                    type="submit"
+                                    class="inline-flex items-center justify-center gap-1.5 rounded-md border border-transparent bg-primary px-[18px] py-2.5 text-sm font-medium text-on-primary transition-colors duration-150 hover:bg-primary-active focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-canvas disabled:opacity-50"
+                                    :disabled="clarifyForm.processing"
+                                >
+                                    Enviar respostas
+                                </button>
+                            </form>
                         </div>
 
                         <!-- failed -->
