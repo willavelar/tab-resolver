@@ -88,7 +88,7 @@ class PrismReceiptExtractor implements ReceiptExtractor
         $model = $this->resolveCredentials()['model'];
 
         $response = Prism::structured()
-            ->using(Provider::Anthropic, $model)
+            ->using(Provider::OpenAI, $model)
             ->withSchema($schema)
             ->withProviderOptions(['use_tool_calling' => true])
             ->withMessages([$message])
@@ -139,12 +139,12 @@ class PrismReceiptExtractor implements ReceiptExtractor
         $integration = Integration::current();
 
         if (filled($integration->api_key)) {
-            config(['prism.providers.anthropic.api_key' => $integration->api_key]);
+            config(['prism.providers.openai.api_key' => $integration->api_key]);
         }
 
-        $model = filled($integration->model)
-            ? $integration->model
-            : config('services.anthropic.receipt_model');
+        $model = filled($integration->receipt_model)
+            ? $integration->receipt_model
+            : config('services.openai.receipt_model');
 
         return ['model' => $model];
     }

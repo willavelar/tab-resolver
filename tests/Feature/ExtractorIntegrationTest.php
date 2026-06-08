@@ -6,30 +6,31 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
-it('applies the database api key and model to the prism config at runtime', function () {
-    config(['prism.providers.anthropic.api_key' => 'env-key']);
-    config(['services.anthropic.receipt_model' => 'env-model']);
+it('applies the database api key and receipt model to the prism config at runtime', function () {
+    config(['prism.providers.openai.api_key' => 'env-key']);
+    config(['services.openai.receipt_model' => 'env-model']);
 
     Integration::create([
-        'provider' => 'anthropic',
+        'provider' => 'openai',
         'api_key' => 'db-secret-key',
-        'model' => 'db-model',
+        'receipt_model' => 'db-model',
+        'audio_model' => 'whisper-1',
     ]);
 
     $extractor = new PrismReceiptExtractor;
     $resolved = $extractor->resolveCredentials();
 
     expect($resolved['model'])->toBe('db-model');
-    expect(config('prism.providers.anthropic.api_key'))->toBe('db-secret-key');
+    expect(config('prism.providers.openai.api_key'))->toBe('db-secret-key');
 });
 
 it('falls back to env config when no integration is stored', function () {
-    config(['prism.providers.anthropic.api_key' => 'env-key']);
-    config(['services.anthropic.receipt_model' => 'env-model']);
+    config(['prism.providers.openai.api_key' => 'env-key']);
+    config(['services.openai.receipt_model' => 'env-model']);
 
     $extractor = new PrismReceiptExtractor;
     $resolved = $extractor->resolveCredentials();
 
     expect($resolved['model'])->toBe('env-model');
-    expect(config('prism.providers.anthropic.api_key'))->toBe('env-key');
+    expect(config('prism.providers.openai.api_key'))->toBe('env-key');
 });
