@@ -14,6 +14,19 @@ const props = defineProps({
 const shareUrl = computed(() => route('sessions.show', props.session.id));
 
 const copied = ref(false);
+const participants = ref([...(props.session.participants ?? [])]);
+const publicCopied = ref(false);
+
+const copyPublicLink = async () => {
+    try {
+        await navigator.clipboard.writeText(props.session.public_url);
+        publicCopied.value = true;
+        setTimeout(() => (publicCopied.value = false), 2000);
+    } catch {
+        publicCopied.value = false;
+    }
+};
+
 const canShare = ref(false);
 const extracting = ref(false);
 
@@ -68,13 +81,16 @@ const subscribe = () => {
     channel.listen('.extraction.updated', () => {
         router.reload({ only: ['session'] });
     });
+    channel.listen('.participant.submitted', (payload) => {
+        if (!participants.value.some((p) => p.id === payload.id)) {
+            participants.value.push(payload);
+        }
+    });
 };
 
 onMounted(() => {
     canShare.value = typeof navigator !== 'undefined' && !!navigator.share;
-    if (props.session.status === 'processing') {
-        subscribe();
-    }
+    subscribe();
 });
 
 onBeforeUnmount(() => {
@@ -135,6 +151,73 @@ onBeforeUnmount(() => {
                                 🔗 Compartilhar
                             </button>
                         </div>
+                    </div>
+
+                    <div class="mt-6 rounded-md border border-hairline bg-surface-strong p-4">
+                        <span class="text-sm font-medium text-body">Link público (sem login)</span>
+                        <p class="mt-1 text-xs text-muted">
+                            Compartilhe com quem estava na mesa para enviar nome e o que consumiu.
+                        </p>
+
+                        <input
+                            type="text"
+                            :value="session.public_url"
+                            readonly
+                            class="mt-2 block w-full rounded-md border border-hairline bg-surface-card px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary"
+                            @focus="$event.target.select()"
+                        />
+
+                        <button
+                            type="button"
+                            class="mt-3 inline-flex items-center justify-center gap-1.5 rounded-md border border-hairline-strong bg-surface-card px-[17px] py-2 text-sm font-medium text-ink transition-colors duration-150 hover:bg-canvas-soft focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-canvas"
+                            @click="copyPublicLink"
+                        >
+                            {{ publicCopied ? '✓ Copiado!' : '📋 Copiar link público' }}
+                        </button>
+                    </div>
+
+                    <div class="mt-6">
+                        <h3 class="text-sm font-semibold text-ink">
+                            Participantes
+                            <span class="text-muted">({{ participants.length }})</span>
+                        </h3>
+
+                        <p v-if="participants.length === 0" class="mt-2 text-sm text-muted">
+                            Ninguém enviou ainda. Os envios aparecem aqui em tempo real.
+                        </p>
+
+                        <ul v-else class="mt-3 space-y-2">
+                            <li
+                                v-for="participant in participants"
+                                :key="participant.id"
+                                class="rounded-md border border-hairline bg-surface-strong p-3"
+                            >
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="text-sm font-medium text-ink">{{ participant.name }}</span>
+                                    <span class="flex gap-1">
+                                        <span
+                                            v-if="participant.has_text"
+                                            class="rounded-full bg-surface-card px-2 py-0.5 text-xs text-body"
+                                        >texto</span>
+                                        <span
+                                            v-if="participant.has_audio"
+                                            class="rounded-full bg-surface-card px-2 py-0.5 text-xs text-body"
+                                        >áudio</span>
+                                    </span>
+                                </div>
+
+                                <p v-if="participant.text" class="mt-1 text-sm text-body">
+                                    {{ participant.text }}
+                                </p>
+
+                                <audio
+                                    v-if="participant.audio_url"
+                                    :src="participant.audio_url"
+                                    controls
+                                    class="mt-2 h-9 w-full"
+                                />
+                            </li>
+                        </ul>
                     </div>
 
                     <div class="mt-6 overflow-hidden rounded-lg border border-hairline">
