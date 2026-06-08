@@ -15,7 +15,7 @@ return new class extends Migration
         Schema::table('session_participants', function (Blueprint $table) {
             $table->string('submitter_token')->nullable()->after('name');
             $table->string('ip_address')->nullable()->after('audio_duration');
-            $table->string('user_agent')->nullable()->after('ip_address');
+            $table->text('user_agent')->nullable()->after('ip_address');
 
             $table->unique(['bill_session_id', 'submitter_token']);
         });

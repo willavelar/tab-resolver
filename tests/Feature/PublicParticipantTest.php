@@ -188,6 +188,8 @@ test('store sets the tr_pid cookie and records the submitter token', function ()
     $response->assertSessionHasNoErrors();
     $response->assertCookie('tr_pid');
     expect(SessionParticipant::first()->submitter_token)->not->toBeNull();
+    $cookie = $response->getCookie('tr_pid', false);
+    expect(SessionParticipant::first()->submitter_token)->toBe($cookie->getValue());
 });
 
 test('show reports already submitted when the cookie matches a participant', function () {
@@ -224,4 +226,5 @@ test('a device that already submitted cannot submit again', function () {
         ->assertSessionHasNoErrors();
 
     expect(SessionParticipant::count())->toBe(1);
+    Event::assertNotDispatched(ParticipantSubmitted::class);
 });
