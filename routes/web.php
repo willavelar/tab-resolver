@@ -2,6 +2,7 @@
 
 // routes/web.php
 
+use App\Http\Controllers\IntegrationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SessionController;
 use Illuminate\Support\Facades\Route;
@@ -28,6 +29,11 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/sessions/{session}', [SessionController::class, 'show'])
         ->name('sessions.show');
+
+    Route::get('/integrations', [IntegrationController::class, 'edit'])
+        ->name('integrations.edit');
+    Route::patch('/integrations', [IntegrationController::class, 'update'])
+        ->name('integrations.update');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
