@@ -1,4 +1,5 @@
 <?php
+
 // tests/Feature/Auth/RouteProtectionTest.php
 
 use App\Models\User;
