@@ -4,6 +4,8 @@ use App\Enums\ExtractionStatus;
 use App\Models\Session;
 use App\Models\SessionItem;
 use App\Models\User;
+use App\Services\Receipt\FakeReceiptExtractor;
+use App\Services\Receipt\ReceiptExtractor;
 
 test('extraction status enum has the expected cases', function () {
     expect(ExtractionStatus::Pending->value)->toBe('pending');
@@ -35,4 +37,19 @@ test('a session has many ordered items with decimal casts', function () {
     expect($session->items)->toHaveCount(1);
     expect($session->items->first()->name)->toBe('Cerveja');
     expect((float) $session->items->first()->total_price)->toBe(25.00);
+});
+
+test('the fake extractor returns a deterministic result', function () {
+    $extractor = new FakeReceiptExtractor();
+
+    expect($extractor)->toBeInstanceOf(ReceiptExtractor::class);
+
+    $result = $extractor->extract('/tmp/whatever.jpg');
+
+    expect($result->items)->toHaveCount(2);
+    expect($result->items[0]['name'])->toBe('Cerveja Heineken');
+    expect($result->subtotal)->toBe(50.0);
+    expect($result->serviceCharge)->toBe(5.0);
+    expect($result->total)->toBe(55.0);
+    expect($result->raw)->toBeArray();
 });
