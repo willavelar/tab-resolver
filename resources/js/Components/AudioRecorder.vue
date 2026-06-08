@@ -128,7 +128,7 @@ onBeforeUnmount(() => {
                 <button
                     v-if="!recording"
                     type="button"
-                    class="inline-flex items-center justify-center gap-1.5 rounded-md border border-transparent bg-primary px-[17px] py-2 text-sm font-medium text-on-primary transition-colors duration-150 hover:bg-primary-active focus:outline-none focus:ring-2 focus:ring-primary"
+                    class="inline-flex items-center justify-center gap-1.5 rounded-md border border-transparent bg-success px-[17px] py-2 text-sm font-medium text-on-primary transition-colors duration-150 hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-success"
                     @click="startRecording"
                 >
                     🎙️ Gravar
@@ -153,7 +153,7 @@ onBeforeUnmount(() => {
                     class="shrink-0 text-sm font-medium text-muted underline hover:text-body"
                     @click="reset"
                 >
-                    Regravar
+                    Remover
                 </button>
             </div>
         </template>
