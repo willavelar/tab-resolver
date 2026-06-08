@@ -10,6 +10,7 @@ use App\Http\Requests\ClarifyExtractionRequest;
 use App\Http\Requests\StoreSessionRequest;
 use App\Jobs\ExtractReceiptItems;
 use App\Models\Session;
+use App\Services\Receipt\ReceiptSummary;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -112,12 +113,18 @@ class SessionController extends Controller
                 'subtotal' => $session->subtotal,
                 'service_charge' => $session->service_charge,
                 'total' => $session->total,
+                'service_charge_percentage' => $session->service_charge_percentage,
+                'clarifications' => $session->clarifications,
+                'summary_markdown' => $session->status === ExtractionStatus::Completed
+                    ? ReceiptSummary::for($session)
+                    : null,
                 'items' => $session->items->map(fn ($item) => [
                     'id' => $item->id,
                     'name' => $item->name,
                     'quantity' => $item->quantity,
                     'unit_price' => $item->unit_price,
                     'total_price' => $item->total_price,
+                    'category' => $item->category?->value,
                 ]),
                 'public_token' => $session->public_token,
                 'public_url' => route('public.sessions.show', $session->public_token),

@@ -1,6 +1,9 @@
 <?php
 
+use App\Enums\ExtractionStatus;
+use App\Enums\ItemCategory;
 use App\Models\Session;
+use App\Models\SessionItem;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -110,4 +113,25 @@ test('guest cannot view a session', function () {
     $response = $this->get("/sessions/{$session->id}");
 
     $response->assertRedirect('/login');
+});
+
+test('the show page exposes category, tip percentage, clarifications and summary', function () {
+    $owner = User::factory()->create();
+    $session = Session::factory()->for($owner)->create([
+        'status' => ExtractionStatus::Completed,
+        'subtotal' => 50,
+        'service_charge' => 5,
+        'service_charge_percentage' => 10,
+        'total' => 55,
+    ]);
+    SessionItem::create(['bill_session_id' => $session->id, 'name' => 'Heineken', 'quantity' => 1, 'unit_price' => 9.90, 'total_price' => 9.90, 'category' => ItemCategory::Drink, 'position' => 1]);
+
+    $this->actingAs($owner)
+        ->get("/sessions/{$session->id}")
+        ->assertInertia(fn ($page) => $page
+            ->component('Sessions/Show')
+            ->where('session.service_charge_percentage', fn ($v) => (float) $v === 10.0)
+            ->where('session.items.0.category', 'drink')
+            ->where('session.summary_markdown', fn ($v) => str_contains((string) $v, '## Bebida'))
+        );
 });
