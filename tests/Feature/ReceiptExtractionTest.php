@@ -171,3 +171,7 @@ test('item category enum exposes pt-br labels', function () {
         ->and(ItemCategory::Food->label())->toBe('Comida')
         ->and(ItemCategory::Drink->label())->toBe('Bebida');
 });
+
+test('extraction status has a needs_clarification case', function () {
+    expect(ExtractionStatus::NeedsClarification->value)->toBe('needs_clarification');
+});
