@@ -54,7 +54,7 @@ class SessionController extends Controller
     {
         abort_unless($session->user_id === auth()->id(), 403);
 
-        $session->load('items');
+        $session->load(['items', 'participants']);
 
         return Inertia::render('Sessions/Show', [
             'session' => [
@@ -73,6 +73,19 @@ class SessionController extends Controller
                     'quantity' => $item->quantity,
                     'unit_price' => $item->unit_price,
                     'total_price' => $item->total_price,
+                ]),
+                'public_token' => $session->public_token,
+                'public_url' => route('public.sessions.show', $session->public_token),
+                'participants' => $session->participants->map(fn ($participant) => [
+                    'id' => $participant->id,
+                    'name' => $participant->name,
+                    'has_text' => filled($participant->text),
+                    'has_audio' => filled($participant->audio_path),
+                    'text' => $participant->text,
+                    'audio_url' => $participant->audio_path
+                        ? Storage::disk('public')->url($participant->audio_path)
+                        : null,
+                    'created_at' => $participant->created_at->format('d/m/Y H:i'),
                 ]),
             ],
         ]);

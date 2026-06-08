@@ -146,3 +146,19 @@ test('audio longer than 120 seconds is rejected', function () {
     $response->assertSessionHasErrors('audio_duration');
     expect(SessionParticipant::count())->toBe(0);
 });
+
+test('the owner show page includes the public link and participants', function () {
+    $user = User::factory()->create();
+    $session = Session::factory()->for($user)->create();
+    $session->participants()->create(['name' => 'Ana', 'text' => 'Pizza']);
+
+    $this->actingAs($user)
+        ->get("/sessions/{$session->id}")
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('session.public_url', route('public.sessions.show', $session->public_token))
+            ->where('session.participants.0.name', 'Ana')
+            ->where('session.participants.0.has_text', true)
+            ->where('session.participants.0.has_audio', false)
+        );
+});
