@@ -159,6 +159,21 @@ Breeze provides session-based auth. The `auth` middleware group gates all applic
 
 `QUEUE_CONNECTION=redis` in production/Docker. In tests `QUEUE_CONNECTION=sync` (see `phpunit.xml`) so jobs run inline without a worker.
 
+### Receipt AI extraction (Reverb + queue)
+
+The session show page reads receipts via AI (Prism + Anthropic Claude vision),
+triggered by a button. For it to work in dev, these must be running and set:
+
+- `ANTHROPIC_API_KEY` (+ optional `ANTHROPIC_RECEIPT_MODEL`) in `.env`
+- Queue worker: `docker compose exec app php artisan queue:work redis --tries=3`
+  (or the `queue` compose service)
+- Reverb websocket: `docker compose exec app php artisan reverb:start`
+  (or the `reverb` compose service), with `REVERB_*` / `VITE_REVERB_*` env set
+
+Flow: `POST /sessions/{id}/extract` → `ExtractReceiptItems` job → Prism/Anthropic
+→ persists `session_items` + totals + `raw_extraction` → broadcasts
+`ReceiptExtractionUpdated` on private channel `bill-session.{id}` → Vue updates live.
+
 ### Testing conventions
 
 - **Pest** is the test runner — write tests using Pest syntax (`it()`, `test()`, `expect()`), not PHPUnit class style.
