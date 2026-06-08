@@ -40,6 +40,12 @@ const showingNavigationDropdown = ref(false);
                                 >
                                     Dashboard
                                 </NavLink>
+                                <NavLink
+                                    :href="route('integrations.edit')"
+                                    :active="route().current('integrations.edit')"
+                                >
+                                    Integrações
+                                </NavLink>
                             </div>
                         </div>
 
@@ -166,6 +172,12 @@ const showingNavigationDropdown = ref(false);
                             :active="route().current('dashboard')"
                         >
                             Dashboard
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink
+                            :href="route('integrations.edit')"
+                            :active="route().current('integrations.edit')"
+                        >
+                            Integrações
                         </ResponsiveNavLink>
                     </div>
 
