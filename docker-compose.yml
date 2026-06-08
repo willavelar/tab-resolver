@@ -44,7 +44,25 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: php artisan queue:work redis --tries=3 --timeout=120
+    # queue:listen (not queue:work) reboots the framework per job, so changes to
+    # Job classes are picked up without restarting the container in dev.
+    command: php artisan queue:listen redis --tries=3 --timeout=120
+
+  vite:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    user: "${UID}:${GID}"
+    volumes:
+      - .:/var/www/html
+    networks:
+      - tabresolve
+    # Install deps inside the container (host Node is too old for Vite 8), then
+    # start the dev server with HMR. Writes public/hot so Laravel serves assets
+    # from here instead of the built manifest.
+    command: sh -c "[ -d node_modules ] || npm install; npm run dev"
+    ports:
+      - "${FORWARD_VITE_PORT:-5173}:5173"
 
   nginx:
     image: nginx:alpine

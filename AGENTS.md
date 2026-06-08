@@ -72,7 +72,12 @@ Guidance for AI Coding Agents when working with code in this repository.
 > up first (`docker compose up -d`), then exec into `app`.
 
 ```bash
-# Start the full stack (app + nginx + mysql + redis) — app on http://localhost:8080
+# Start the full stack (app + nginx + mysql + redis + vite + queue + reverb)
+# app on http://localhost:8080. Hot reload is automatic in dev:
+#   - PHP-FPM has no OPcache + code is bind-mounted → web changes reflect per request
+#   - `queue` runs queue:listen → Job changes reflect without restarting
+#   - `vite` runs the dev server with HMR on :5173 → Vue/JS/CSS reflect live
+# No manual `npm run build` needed while developing.
 docker compose up -d --build
 
 # Run any command inside the app container
@@ -80,8 +85,9 @@ docker compose exec app <command>
 
 # Assets (Vite 8 — MUST run in the container)
 docker compose exec app npm install
-docker compose exec app npm run build       # production build
-docker compose exec app npm run dev         # Vite HMR (expose port 5173 if used from host)
+docker compose exec app npm run build       # production build (CI / prod only)
+# Dev HMR is handled automatically by the `vite` service — see `docker compose logs vite`.
+# It writes public/hot so Laravel serves assets from http://localhost:5173.
 
 # Dev runner (Laravel + queue worker + Pail logs + Vite, concurrently)
 docker compose exec app composer run dev
