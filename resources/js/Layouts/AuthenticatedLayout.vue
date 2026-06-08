@@ -41,6 +41,7 @@ const showingNavigationDropdown = ref(false);
                                     Dashboard
                                 </NavLink>
                                 <NavLink
+                                    v-if="$page.props.auth.user.is_admin"
                                     :href="route('integrations.edit')"
                                     :active="route().current('integrations.edit')"
                                 >
@@ -174,6 +175,7 @@ const showingNavigationDropdown = ref(false);
                             Dashboard
                         </ResponsiveNavLink>
                         <ResponsiveNavLink
+                            v-if="$page.props.auth.user.is_admin"
                             :href="route('integrations.edit')"
                             :active="route().current('integrations.edit')"
                         >

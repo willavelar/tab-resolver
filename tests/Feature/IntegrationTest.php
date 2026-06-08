@@ -12,8 +12,29 @@ it('redirects guests away from the integrations page', function () {
     $this->get('/integrations')->assertRedirect('/login');
 });
 
-it('renders the integrations page for authenticated users', function () {
+it('forbids non-admin users from viewing the integrations page', function () {
     $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->get('/integrations')
+        ->assertForbidden();
+});
+
+it('forbids non-admin users from updating the integration', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->patch('/integrations', [
+            'model' => 'claude-sonnet-4-5-20250929',
+            'api_key' => 'sk-ant-nope-0000',
+        ])
+        ->assertForbidden();
+
+    expect(Integration::query()->count())->toBe(0);
+});
+
+it('renders the integrations page for authenticated users', function () {
+    $user = User::factory()->admin()->create();
 
     $this->actingAs($user)
         ->get('/integrations')
@@ -31,7 +52,7 @@ it('does not leak the real api key to the frontend', function () {
         'api_key' => 'sk-ant-secret-9876',
         'model' => 'claude-sonnet-4-5-20250929',
     ]);
-    $user = User::factory()->create();
+    $user = User::factory()->admin()->create();
 
     $this->actingAs($user)
         ->get('/integrations')
@@ -43,7 +64,7 @@ it('does not leak the real api key to the frontend', function () {
 });
 
 it('stores the api key encrypted and the model', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->admin()->create();
 
     $this->actingAs($user)
         ->patch('/integrations', [
@@ -66,7 +87,7 @@ it('keeps the existing api key when api_key is left blank', function () {
         'api_key' => 'sk-ant-keepme-5555',
         'model' => 'old-model',
     ]);
-    $user = User::factory()->create();
+    $user = User::factory()->admin()->create();
 
     $this->actingAs($user)
         ->patch('/integrations', [
@@ -81,7 +102,7 @@ it('keeps the existing api key when api_key is left blank', function () {
 });
 
 it('requires the model field', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->admin()->create();
 
     $this->actingAs($user)
         ->patch('/integrations', ['model' => '', 'api_key' => 'x'])
