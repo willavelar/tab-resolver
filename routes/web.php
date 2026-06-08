@@ -1,4 +1,5 @@
 <?php
+
 // routes/web.php
 
 use App\Http\Controllers\ProfileController;
@@ -21,6 +22,9 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/sessions', [SessionController::class, 'store'])
         ->name('sessions.store');
+
+    Route::post('/sessions/{session}/extract', [SessionController::class, 'extract'])
+        ->name('sessions.extract');
 
     Route::get('/sessions/{session}', [SessionController::class, 'show'])
         ->name('sessions.show');

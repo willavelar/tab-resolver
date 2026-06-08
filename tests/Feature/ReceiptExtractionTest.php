@@ -10,6 +10,7 @@ use App\Services\Receipt\ExtractionResult;
 use App\Services\Receipt\FakeReceiptExtractor;
 use App\Services\Receipt\ReceiptExtractor;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Queue;
 
 test('extraction status enum has the expected cases', function () {
     expect(ExtractionStatus::Pending->value)->toBe('pending');
@@ -113,4 +114,52 @@ test('the job marks the session failed when extraction throws', function () {
     Event::assertDispatched(ReceiptExtractionUpdated::class, function ($e) {
         return $e->status === ExtractionStatus::Failed->value;
     });
+});
+
+test('the owner can trigger extraction and the job is queued', function () {
+    Queue::fake();
+    $owner = User::factory()->create();
+    $session = Session::factory()->for($owner)->create(['status' => ExtractionStatus::Pending]);
+
+    $this->actingAs($owner)
+        ->post("/sessions/{$session->id}/extract")
+        ->assertRedirect("/sessions/{$session->id}");
+
+    expect($session->fresh()->status)->toBe(ExtractionStatus::Processing);
+    Queue::assertPushed(ExtractReceiptItems::class);
+});
+
+test('a non-owner cannot trigger extraction', function () {
+    Queue::fake();
+    $session = Session::factory()->for(User::factory())->create(['status' => ExtractionStatus::Pending]);
+
+    $this->actingAs(User::factory()->create())
+        ->post("/sessions/{$session->id}/extract")
+        ->assertForbidden();
+
+    Queue::assertNothingPushed();
+});
+
+test('extraction cannot be retriggered while processing or completed', function () {
+    Queue::fake();
+    $owner = User::factory()->create();
+    $session = Session::factory()->for($owner)->create(['status' => ExtractionStatus::Processing]);
+
+    $this->actingAs($owner)
+        ->post("/sessions/{$session->id}/extract")
+        ->assertForbidden();
+
+    Queue::assertNothingPushed();
+});
+
+test('a failed extraction can be retried', function () {
+    Queue::fake();
+    $owner = User::factory()->create();
+    $session = Session::factory()->for($owner)->create(['status' => ExtractionStatus::Failed]);
+
+    $this->actingAs($owner)
+        ->post("/sessions/{$session->id}/extract")
+        ->assertRedirect("/sessions/{$session->id}");
+
+    Queue::assertPushed(ExtractReceiptItems::class);
 });
