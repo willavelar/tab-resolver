@@ -52,12 +52,16 @@ test('the fake extractor returns a deterministic result', function () {
 
     $result = $extractor->extract('/tmp/whatever.jpg');
 
-    expect($result->items)->toHaveCount(2);
-    expect($result->items[0]['name'])->toBe('Cerveja Heineken');
-    expect($result->subtotal)->toBe(50.0);
-    expect($result->serviceCharge)->toBe(5.0);
-    expect($result->total)->toBe(55.0);
-    expect($result->raw)->toBeArray();
+    expect($result->status)->toBe('complete')
+        ->and($result->items)->toHaveCount(2)
+        ->and($result->items[0]['name'])->toBe('Cerveja Heineken')
+        ->and($result->items[0]['category'])->toBe('drink')
+        ->and($result->items[1]['category'])->toBe('food')
+        ->and($result->subtotal)->toBe(50.0)
+        ->and($result->serviceCharge)->toBe(5.0)
+        ->and($result->serviceChargePercentage)->toBe(10.0)
+        ->and($result->total)->toBe(55.0)
+        ->and($result->raw)->toBeArray();
 });
 
 test('the job persists items and totals and marks the session completed', function () {
