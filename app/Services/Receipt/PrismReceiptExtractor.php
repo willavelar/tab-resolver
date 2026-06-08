@@ -2,6 +2,7 @@
 
 namespace App\Services\Receipt;
 
+use App\Models\Integration;
 use Prism\Prism\Enums\Provider;
 use Prism\Prism\Facades\Prism;
 use Prism\Prism\Schema\ArraySchema;
@@ -49,8 +50,10 @@ class PrismReceiptExtractor implements ReceiptExtractor
             [Image::fromLocalPath(path: $absoluteImagePath)],
         );
 
+        $model = $this->resolveCredentials()['model'];
+
         $response = Prism::structured()
-            ->using(Provider::Anthropic, config('services.anthropic.receipt_model'))
+            ->using(Provider::Anthropic, $model)
             ->withSchema($schema)
             ->withProviderOptions(['use_tool_calling' => true])
             ->withMessages([$message])
@@ -73,5 +76,26 @@ class PrismReceiptExtractor implements ReceiptExtractor
             total: (float) ($data['total'] ?? 0),
             raw: $data,
         );
+    }
+
+    /**
+     * Resolve a chave/modelo da integração: usa o registro do banco quando
+     * existir (sobrescrevendo o config do Prism em runtime), senão cai no .env.
+     *
+     * @return array{model: string}
+     */
+    public function resolveCredentials(): array
+    {
+        $integration = Integration::current();
+
+        if (filled($integration->api_key)) {
+            config(['prism.providers.anthropic.api_key' => $integration->api_key]);
+        }
+
+        $model = filled($integration->model)
+            ? $integration->model
+            : config('services.anthropic.receipt_model');
+
+        return ['model' => $model];
     }
 }
