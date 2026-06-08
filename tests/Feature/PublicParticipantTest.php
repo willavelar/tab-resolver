@@ -164,3 +164,64 @@ test('the owner show page includes the public link and participants', function (
             ->where('session.participants.0.has_audio', false)
         );
 });
+
+test('show reports not submitted when there is no cookie', function () {
+    $session = Session::factory()->for(User::factory())->create();
+
+    $this->get("/c/{$session->public_token}")
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('alreadySubmitted', false)
+            ->where('submittedName', null)
+        );
+});
+
+test('store sets the tr_pid cookie and records the submitter token', function () {
+    Event::fake([ParticipantSubmitted::class]);
+    $session = Session::factory()->for(User::factory())->create();
+
+    $response = $this->post("/c/{$session->public_token}/participants", [
+        'name' => 'Ana',
+        'text' => 'Pizza',
+    ]);
+
+    $response->assertSessionHasNoErrors();
+    $response->assertCookie('tr_pid');
+    expect(SessionParticipant::first()->submitter_token)->not->toBeNull();
+});
+
+test('show reports already submitted when the cookie matches a participant', function () {
+    $session = Session::factory()->for(User::factory())->create();
+    $session->participants()->create([
+        'name' => 'Ana',
+        'text' => 'Pizza',
+        'submitter_token' => 'device-a',
+    ]);
+
+    $this->withUnencryptedCookie('tr_pid', 'device-a')
+        ->get("/c/{$session->public_token}")
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('alreadySubmitted', true)
+            ->where('submittedName', 'Ana')
+        );
+});
+
+test('a device that already submitted cannot submit again', function () {
+    Event::fake([ParticipantSubmitted::class]);
+    $session = Session::factory()->for(User::factory())->create();
+    $session->participants()->create([
+        'name' => 'Ana',
+        'text' => 'Pizza',
+        'submitter_token' => 'device-a',
+    ]);
+
+    $this->withUnencryptedCookie('tr_pid', 'device-a')
+        ->post("/c/{$session->public_token}/participants", [
+            'name' => 'Outra',
+            'text' => 'Tentando de novo',
+        ])
+        ->assertSessionHasNoErrors();
+
+    expect(SessionParticipant::count())->toBe(1);
+});
