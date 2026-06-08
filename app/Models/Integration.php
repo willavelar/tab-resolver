@@ -15,7 +15,8 @@ class Integration extends Model
     protected $fillable = [
         'provider',
         'api_key',
-        'model',
+        'receipt_model',
+        'audio_model',
     ];
 
     protected function casts(): array
@@ -28,7 +29,7 @@ class Integration extends Model
     /**
      * Singleton global da integração (um registro por provider).
      */
-    public static function current(string $provider = 'anthropic'): self
+    public static function current(string $provider = 'openai'): self
     {
         return static::firstOrNew(['provider' => $provider]);
     }

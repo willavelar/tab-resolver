@@ -15,9 +15,10 @@ class IntegrationFactory extends Factory
     public function definition(): array
     {
         return [
-            'provider' => 'anthropic',
-            'api_key' => 'sk-ant-'.$this->faker->bothify('test-####'),
-            'model' => 'claude-sonnet-4-5-20250929',
+            'provider' => 'openai',
+            'api_key' => 'sk-'.$this->faker->bothify('test-####'),
+            'receipt_model' => 'gpt-4o-mini',
+            'audio_model' => 'whisper-1',
         ];
     }
 }
