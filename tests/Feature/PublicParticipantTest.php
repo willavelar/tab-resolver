@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Requests\StorePublicParticipantRequest;
 use App\Models\Session;
 use App\Models\User;
 
@@ -42,4 +43,15 @@ test('an invalid public token returns 404', function () {
     $response = $this->get('/c/does-not-exist');
 
     $response->assertNotFound();
+});
+
+test('the participant request requires name and one of text or audio', function () {
+    $rules = (new StorePublicParticipantRequest)->rules();
+
+    expect($rules)->toHaveKeys(['name', 'text', 'audio', 'audio_duration'])
+        ->and($rules['name'])->toContain('required')
+        ->and($rules['text'])->toContain('required_without:audio')
+        ->and($rules['text'])->toContain('max:256')
+        ->and($rules['audio'])->toContain('required_without:text')
+        ->and($rules['audio_duration'])->toContain('max:120');
 });
