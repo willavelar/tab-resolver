@@ -18,7 +18,8 @@ class UpdateIntegrationRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'model' => ['required', 'string', 'max:255'],
+            'receipt_model' => ['required', 'string', 'max:255'],
+            'audio_model' => ['required', 'string', 'max:255'],
             'api_key' => ['nullable', 'string', 'max:255'],
         ];
     }

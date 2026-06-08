@@ -101,10 +101,26 @@ it('keeps the existing api key when api_key is left blank', function () {
     expect($integration->model)->toBe('new-model');
 });
 
-it('requires the model field', function () {
+it('requires the receipt_model field', function () {
     $user = User::factory()->admin()->create();
 
     $this->actingAs($user)
-        ->patch('/integrations', ['model' => '', 'api_key' => 'x'])
-        ->assertSessionHasErrors('model');
+        ->patch('/integrations', [
+            'receipt_model' => '',
+            'audio_model' => 'whisper-1',
+            'api_key' => 'x',
+        ])
+        ->assertSessionHasErrors('receipt_model');
+});
+
+it('requires the audio_model field', function () {
+    $user = User::factory()->admin()->create();
+
+    $this->actingAs($user)
+        ->patch('/integrations', [
+            'receipt_model' => 'gpt-4o-mini',
+            'audio_model' => '',
+            'api_key' => 'x',
+        ])
+        ->assertSessionHasErrors('audio_model');
 });
