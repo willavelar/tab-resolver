@@ -32,5 +32,6 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('manage-integrations', fn (User $user): bool => $user->is_admin === true);
         Gate::define('viewPulse', fn (User $user): bool => $user->is_admin === true);
         Gate::define('viewHorizon', fn (User $user): bool => $user->is_admin === true);
+        Gate::define('view-logs', fn (User $user): bool => $user->is_admin === true);
     }
 }
