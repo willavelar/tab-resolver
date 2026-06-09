@@ -72,10 +72,10 @@ Guidance for AI Coding Agents when working with code in this repository.
 > up first (`docker compose up -d`), then exec into `app`.
 
 ```bash
-# Start the full stack (app + nginx + mysql + redis + vite + queue + reverb)
+# Start the full stack (app + nginx + mysql + redis + vite + horizon + reverb)
 # app on http://localhost:8080. Hot reload is automatic in dev:
 #   - PHP-FPM has no OPcache + code is bind-mounted → web changes reflect per request
-#   - `queue` runs queue:listen → Job changes reflect without restarting
+#   - `horizon` runs php artisan horizon → restart after changing a Job class
 #   - `vite` runs the dev server with HMR on :5173 → Vue/JS/CSS reflect live
 # No manual `npm run build` needed while developing.
 docker compose up -d --build
@@ -94,6 +94,10 @@ docker compose exec app composer run dev
 
 # Individual services
 docker compose exec app php artisan serve
+
+# Horizon (queue dashboard + workers) — runs as the `horizon` compose service
+docker compose exec app php artisan horizon          # start workers (foreground)
+docker compose exec app php artisan horizon:terminate # graceful restart (deploy)
 
 # Database
 docker compose exec app php artisan migrate
@@ -171,8 +175,8 @@ The session show page reads receipts via AI (Prism + Anthropic Claude vision),
 triggered by a button. For it to work in dev, these must be running and set:
 
 - `ANTHROPIC_API_KEY` (+ optional `ANTHROPIC_RECEIPT_MODEL`) in `.env`
-- Queue worker: `docker compose exec app php artisan queue:work redis --tries=3`
-  (or the `queue` compose service)
+- Queue worker: the `horizon` compose service runs `php artisan horizon` and
+  manages workers automatically (restart it after changing the Job class)
 - Reverb websocket: `docker compose exec app php artisan reverb:start`
   (or the `reverb` compose service), with `REVERB_*` / `VITE_REVERB_*` env set
 
@@ -188,6 +192,18 @@ MySQL (`pulse_*` tables). Access is gated to admins via the `viewPulse` gate
 service runs `php artisan pulse:check` — required for aggregation and for the
 Reverb connection cards to populate (they poll). Slow-jobs threshold is raised to
 30s for `ExtractReceiptItems` (slow by design) via `config/pulse.php`.
+
+### Observability (Horizon)
+
+`/horizon` (Laravel Horizon) is the primary queue dashboard for the Redis
+queues: throughput, runtime, tags, and one-click retry of failed jobs. Storage
+is Redis (no migrations). Access is gated to admins via the `viewHorizon` gate
+(defined in `AppServiceProvider` alongside `viewPulse`, reusing `User::$is_admin`).
+The `horizon` compose service runs `php artisan horizon` and manages the queue
+workers; restart it (`docker compose restart horizon`) after changing a Job
+class, since Horizon keeps code in memory. In production, run `php artisan
+horizon` under a supervisor and call `php artisan horizon:terminate` on deploy.
+Pulse remains for Reverb monitoring and the broad observability overview.
 
 ### Testing conventions
 

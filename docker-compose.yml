@@ -30,7 +30,7 @@ services:
     ports:
       - "${FORWARD_REVERB_PORT:-8081}:8080"
 
-  queue:
+  horizon:
     build:
       context: .
       dockerfile: docker/php/Dockerfile
@@ -44,9 +44,10 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    # queue:listen (not queue:work) reboots the framework per job, so changes to
-    # Job classes are picked up without restarting the container in dev.
-    command: php artisan queue:listen redis --tries=3 --timeout=120
+    # Horizon manages the Redis queue workers (queue:work style — code stays in
+    # memory). Restart this service after changing a Job class:
+    #   docker compose restart horizon
+    command: php artisan horizon
 
   pulse:
     build:
