@@ -3,6 +3,8 @@
 use Laravel\Pulse\Http\Middleware\Authorize;
 use Laravel\Pulse\Pulse;
 use Laravel\Pulse\Recorders;
+use Laravel\Reverb\Pulse\Recorders\ReverbConnections;
+use Laravel\Reverb\Pulse\Recorders\ReverbMessages;
 
 return [
 
@@ -174,7 +176,10 @@ return [
         Recorders\SlowJobs::class => [
             'enabled' => env('PULSE_SLOW_JOBS_ENABLED', true),
             'sample_rate' => env('PULSE_SLOW_JOBS_SAMPLE_RATE', 1),
-            'threshold' => env('PULSE_SLOW_JOBS_THRESHOLD', 1000),
+            'threshold' => [
+                '#^App\\Jobs\\ExtractReceiptItems$#' => 30000,
+                'default' => env('PULSE_SLOW_JOBS_THRESHOLD', 1000),
+            ],
             'ignore' => [
                 // '/^Package\\\\Jobs\\\\/',
             ],
@@ -231,6 +236,14 @@ return [
                 '#^/'.env('PULSE_PATH', 'pulse').'$#', // Pulse dashboard...
                 '#^/telescope#', // Telescope dashboard...
             ],
+        ],
+
+        ReverbConnections::class => [
+            'sample_rate' => 1,
+        ],
+
+        ReverbMessages::class => [
+            'sample_rate' => 1,
         ],
     ],
 ];
