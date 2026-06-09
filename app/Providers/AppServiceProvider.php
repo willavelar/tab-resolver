@@ -30,5 +30,6 @@ class AppServiceProvider extends ServiceProvider
         Vite::prefetch(concurrency: 3);
 
         Gate::define('manage-integrations', fn (User $user): bool => $user->is_admin === true);
+        Gate::define('viewPulse', fn (User $user): bool => $user->is_admin === true);
     }
 }
