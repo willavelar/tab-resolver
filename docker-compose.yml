@@ -48,6 +48,24 @@ services:
     # Job classes are picked up without restarting the container in dev.
     command: php artisan queue:listen redis --tries=3 --timeout=120
 
+  pulse:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    user: "${UID}:${GID}"
+    volumes:
+      - .:/var/www/html
+    networks:
+      - tabresolve
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # pulse:check aggregates metrics and polls Reverb connection counts.
+    # Without this daemon, the Reverb cards stay empty.
+    command: php artisan pulse:check
+
   vite:
     build:
       context: .
