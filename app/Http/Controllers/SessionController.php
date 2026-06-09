@@ -12,6 +12,7 @@ use App\Jobs\ExtractReceiptItems;
 use App\Models\Session;
 use App\Services\Receipt\ReceiptSummary;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -25,11 +26,24 @@ class SessionController extends Controller
 
     public function store(StoreSessionRequest $request): RedirectResponse
     {
+        Log::info('[Controller][SessionController][store] Inicio da execusão.', [
+            'user_id' => $request->user()->id,
+            'title' => $request->validated('title'),
+        ]);
+
         $path = $request->file('image')->store('receipts', 'public');
+
+        Log::info('[Controller][SessionController][store] Imagem do recibo armazenada.', [
+            'image_path' => $path,
+        ]);
 
         $session = $request->user()->sessions()->create([
             'title' => $request->validated('title'),
             'image_path' => $path,
+        ]);
+
+        Log::info('[Controller][SessionController][store] Fim da execusão.', [
+            'session_id' => $session->id,
         ]);
 
         return redirect()->route('sessions.show', $session);
@@ -37,15 +51,32 @@ class SessionController extends Controller
 
     public function extract(Session $session): RedirectResponse
     {
-        abort_unless($session->user_id === auth()->id(), 403);
-        abort_if(
-            in_array($session->status, [
-                ExtractionStatus::Processing,
-                ExtractionStatus::Completed,
-                ExtractionStatus::NeedsClarification,
-            ], true),
-            403,
-        );
+        Log::info('[Controller][SessionController][extract] Inicio da execusão.', [
+            'session_id' => $session->id,
+            'status' => $session->status->value,
+        ]);
+
+        if ($session->user_id !== auth()->id()) {
+            Log::warning('[Controller][SessionController][extract] Acesso negado: usuário não é dono da sessão.', [
+                'session_id' => $session->id,
+                'user_id' => auth()->id(),
+            ]);
+            abort(403);
+        }
+
+        $blockedStatuses = [
+            ExtractionStatus::Processing,
+            ExtractionStatus::Completed,
+            ExtractionStatus::NeedsClarification,
+        ];
+
+        if (in_array($session->status, $blockedStatuses, true)) {
+            Log::warning('[Controller][SessionController][extract] Extração bloqueada: status atual não permite reprocessar.', [
+                'session_id' => $session->id,
+                'status' => $session->status->value,
+            ]);
+            abort(403);
+        }
 
         $session->update([
             'status' => ExtractionStatus::Processing,
@@ -57,13 +88,35 @@ class SessionController extends Controller
 
         ExtractReceiptItems::dispatch($session);
 
+        Log::info('[Controller][SessionController][extract] Job de extração despachado. Fim da execusão.', [
+            'session_id' => $session->id,
+        ]);
+
         return redirect()->route('sessions.show', $session);
     }
 
     public function clarify(ClarifyExtractionRequest $request, Session $session): RedirectResponse
     {
-        abort_unless($session->user_id === auth()->id(), 403);
-        abort_unless($session->status === ExtractionStatus::NeedsClarification, 403);
+        Log::info('[Controller][SessionController][clarify] Inicio da execusão.', [
+            'session_id' => $session->id,
+            'status' => $session->status->value,
+        ]);
+
+        if ($session->user_id !== auth()->id()) {
+            Log::warning('[Controller][SessionController][clarify] Acesso negado: usuário não é dono da sessão.', [
+                'session_id' => $session->id,
+                'user_id' => auth()->id(),
+            ]);
+            abort(403);
+        }
+
+        if ($session->status !== ExtractionStatus::NeedsClarification) {
+            Log::warning('[Controller][SessionController][clarify] Esclarecimento ignorado: sessão não aguarda respostas.', [
+                'session_id' => $session->id,
+                'status' => $session->status->value,
+            ]);
+            abort(403);
+        }
 
         $clarifications = $session->clarifications ?? [];
         $answered = $clarifications['answered'] ?? [];
@@ -92,6 +145,12 @@ class SessionController extends Controller
         event(new ReceiptExtractionUpdated($session->id, ExtractionStatus::Processing->value));
 
         ExtractReceiptItems::dispatch($session);
+
+        Log::info('[Controller][SessionController][clarify] Respostas registradas e job redespachado. Fim da execusão.', [
+            'session_id' => $session->id,
+            'respostas_recebidas' => count($answered),
+            'round' => ($clarifications['round'] ?? 0) + 1,
+        ]);
 
         return redirect()->route('sessions.show', $session);
     }

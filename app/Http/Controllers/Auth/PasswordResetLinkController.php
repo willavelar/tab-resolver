@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -29,6 +30,10 @@ class PasswordResetLinkController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        Log::info('[Controller][PasswordResetLinkController][store] Inicio da execusão.', [
+            'email' => $request->input('email'),
+        ]);
+
         $request->validate([
             'email' => 'required|email',
         ]);
@@ -41,8 +46,17 @@ class PasswordResetLinkController extends Controller
         );
 
         if ($status == Password::RESET_LINK_SENT) {
+            Log::info('[Controller][PasswordResetLinkController][store] Link de redefinição enviado. Fim da execusão.', [
+                'email' => $request->input('email'),
+            ]);
+
             return back()->with('status', __($status));
         }
+
+        Log::warning('[Controller][PasswordResetLinkController][store] Falha ao enviar link de redefinição.', [
+            'email' => $request->input('email'),
+            'status' => $status,
+        ]);
 
         throw ValidationException::withMessages([
             'email' => [trans($status)],

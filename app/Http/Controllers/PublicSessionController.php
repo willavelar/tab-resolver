@@ -9,6 +9,7 @@ use App\Models\SessionParticipant;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cookie;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -35,10 +36,19 @@ class PublicSessionController extends Controller
 
     public function store(StorePublicParticipantRequest $request, string $token): RedirectResponse
     {
+        Log::info('[Controller][PublicSessionController][store] Inicio da execusão.', [
+            'token' => $token,
+            'name' => $request->validated('name'),
+        ]);
+
         $session = Session::where('public_token', $token)->firstOrFail();
 
         // Idempotent: a device that already submitted just sees the sent state.
         if ($this->existingParticipant($request, $session) !== null) {
+            Log::info('[Controller][PublicSessionController][store] Participante já havia enviado (idempotente). Fim da execusão.', [
+                'session_id' => $session->id,
+            ]);
+
             return back()->with('success', 'Enviado! Obrigado por participar.');
         }
 
@@ -47,6 +57,10 @@ class PublicSessionController extends Controller
         $audioPath = null;
         if ($request->hasFile('audio')) {
             $audioPath = $request->file('audio')->store('participant-audios', 'public');
+            Log::info('[Controller][PublicSessionController][store] Áudio do participante armazenado.', [
+                'session_id' => $session->id,
+                'audio_path' => $audioPath,
+            ]);
         }
 
         $participant = $session->participants()->create([
@@ -69,6 +83,12 @@ class PublicSessionController extends Controller
             audioUrl: $audioPath ? Storage::disk('public')->url($audioPath) : null,
             createdAt: $participant->created_at->format('d/m/Y H:i'),
         ));
+
+        Log::info('[Controller][PublicSessionController][store] Participante registrado e evento disparado. Fim da execusão.', [
+            'session_id' => $session->id,
+            'participant_id' => $participant->id,
+            'has_audio' => filled($audioPath),
+        ]);
 
         return back()
             ->with('success', 'Enviado! Obrigado por participar.')
