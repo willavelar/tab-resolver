@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 return [
@@ -129,8 +130,14 @@ return [
     | storage. By default, no PHP classes will be unserialized from your
     | cache to prevent gadget chain attacks if your APP_KEY is leaked.
     |
+    | Laravel Pulse memoizes its Reverb dashboard cards as nested
+    | Illuminate\Support\Collection instances through the cache, so that class
+    | must be allow-listed here or /pulse fails with __PHP_Incomplete_Class.
+    |
     */
 
-    'serializable_classes' => false,
+    'serializable_classes' => [
+        Collection::class,
+    ],
 
 ];
