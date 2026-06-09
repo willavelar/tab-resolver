@@ -3,6 +3,7 @@
 // routes/web.php
 
 use App\Http\Controllers\IntegrationController;
+use App\Http\Controllers\LogController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PublicSessionController;
 use App\Http\Controllers\SessionController;
@@ -39,6 +40,14 @@ Route::middleware('auth')->group(function () {
             ->name('integrations.edit');
         Route::patch('/integrations', [IntegrationController::class, 'update'])
             ->name('integrations.update');
+    });
+
+    Route::middleware('can:view-logs')->group(function () {
+        Route::get('/logs', [LogController::class, 'index'])
+            ->name('logs.index');
+        Route::get('/logs/{file}', [LogController::class, 'show'])
+            ->where('file', '[A-Za-z0-9._-]+')
+            ->name('logs.show');
     });
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
