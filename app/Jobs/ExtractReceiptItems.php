@@ -12,6 +12,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
 
@@ -43,12 +44,23 @@ class ExtractReceiptItems implements ShouldQueue
 
     public function handle(ReceiptExtractor $extractor): void
     {
+        Log::info('[Job][ExtractReceiptItems][handle] Inicio da execusão.', [
+            'session_id' => $this->session->id,
+        ]);
+
         $clarifications = $this->session->clarifications ?? [];
         $answered = $clarifications['answered'] ?? [];
         $round = $clarifications['round'] ?? 0;
         $forceFinal = $round >= self::MAX_ROUNDS;
 
         $absolutePath = Storage::disk('public')->path($this->session->image_path);
+
+        Log::info('[Job][ExtractReceiptItems][handle] Iniciando extração da imagem.', [
+            'session_id' => $this->session->id,
+            'round' => $round,
+            'force_final' => $forceFinal,
+            'respostas_anteriores' => count($answered),
+        ]);
 
         $result = $extractor->extract($absolutePath, $answered, $forceFinal);
 
@@ -68,6 +80,12 @@ class ExtractReceiptItems implements ShouldQueue
                 $this->session->id,
                 ExtractionStatus::NeedsClarification->value,
             ));
+
+            Log::info('[Job][ExtractReceiptItems][handle] Extração precisa de esclarecimento. Fim da execusão.', [
+                'session_id' => $this->session->id,
+                'perguntas' => count($result->questions),
+                'round' => $round,
+            ]);
 
             return;
         }
@@ -101,10 +119,22 @@ class ExtractReceiptItems implements ShouldQueue
             $this->session->id,
             ExtractionStatus::Completed->value,
         ));
+
+        Log::info('[Job][ExtractReceiptItems][handle] Extração concluída. Fim da execusão.', [
+            'session_id' => $this->session->id,
+            'itens' => count($result->items),
+            'subtotal' => $result->subtotal,
+            'total' => $result->total,
+        ]);
     }
 
     public function failed(Throwable $exception): void
     {
+        Log::warning('[Job][ExtractReceiptItems][failed] Inicio da execusão: job de extração falhou.', [
+            'session_id' => $this->session->id,
+            'erro' => $exception->getMessage(),
+        ]);
+
         $this->session->forceFill([
             'status' => ExtractionStatus::Failed,
             'failure_reason' => $exception->getMessage(),
@@ -115,6 +145,10 @@ class ExtractReceiptItems implements ShouldQueue
             ExtractionStatus::Failed->value,
             $exception->getMessage(),
         ));
+
+        Log::info('[Job][ExtractReceiptItems][failed] Estado de falha persistido. Fim da execusão.', [
+            'session_id' => $this->session->id,
+        ]);
     }
 
     /**

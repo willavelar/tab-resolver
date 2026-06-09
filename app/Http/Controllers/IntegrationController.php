@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\UpdateIntegrationRequest;
 use App\Models\Integration;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redirect;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -29,15 +30,28 @@ class IntegrationController extends Controller
 
     public function update(UpdateIntegrationRequest $request): RedirectResponse
     {
+        Log::info('[Controller][IntegrationController][update] Inicio da execusão.', [
+            'receipt_model' => $request->validated('receipt_model'),
+            'audio_model' => $request->validated('audio_model'),
+            'api_key_alterada' => $request->filled('api_key'),
+        ]);
+
         $integration = Integration::current();
         $integration->receipt_model = $request->validated('receipt_model');
         $integration->audio_model = $request->validated('audio_model');
 
         if ($request->filled('api_key')) {
             $integration->api_key = $request->validated('api_key');
+            Log::info('[Controller][IntegrationController][update] Nova API key recebida e aplicada.', [
+                'integration_id' => $integration->id,
+            ]);
         }
 
         $integration->save();
+
+        Log::info('[Controller][IntegrationController][update] Fim da execusão.', [
+            'integration_id' => $integration->id,
+        ]);
 
         return Redirect::route('integrations.edit')->with('status', 'integration-updated');
     }

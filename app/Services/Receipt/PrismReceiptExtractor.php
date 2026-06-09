@@ -3,6 +3,7 @@
 namespace App\Services\Receipt;
 
 use App\Models\Integration;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Prism\Prism\Enums\Provider;
 use Prism\Prism\Facades\Prism;
@@ -18,6 +19,11 @@ class PrismReceiptExtractor implements ReceiptExtractor
 {
     public function extract(string $absoluteImagePath, array $answered = [], bool $forceFinal = false): ExtractionResult
     {
+        Log::info('[Service][PrismReceiptExtractor][extract] Inicio da execusão.', [
+            'respostas_anteriores' => count($answered),
+            'force_final' => $forceFinal,
+        ]);
+
         $schema = new ObjectSchema(
             name: 'receipt',
             description: 'Resultado da leitura da conta: itens finais OU perguntas quando houver dúvida',
@@ -87,6 +93,10 @@ class PrismReceiptExtractor implements ReceiptExtractor
 
         $model = $this->resolveCredentials()['model'];
 
+        Log::info('[Service][PrismReceiptExtractor][extract] Enviando imagem para o modelo.', [
+            'model' => $model,
+        ]);
+
         $response = Prism::structured()
             ->using(Provider::OpenAI, $model)
             ->withSchema($schema)
@@ -105,6 +115,10 @@ class PrismReceiptExtractor implements ReceiptExtractor
                 'options' => array_values(array_map('strval', $q['options'] ?? [])),
             ], $data['questions'] ?? []);
 
+            Log::info('[Service][PrismReceiptExtractor][extract] Modelo retornou perguntas de esclarecimento. Fim da execusão.', [
+                'perguntas' => count($questions),
+            ]);
+
             return ExtractionResult::requestInput($questions, $data);
         }
 
@@ -117,6 +131,12 @@ class PrismReceiptExtractor implements ReceiptExtractor
         ], $data['items'] ?? []);
 
         $percentage = (float) ($data['service_charge_percentage'] ?? 0);
+
+        Log::info('[Service][PrismReceiptExtractor][extract] Extração completa. Fim da execusão.', [
+            'itens' => count($items),
+            'subtotal' => (float) ($data['subtotal'] ?? 0),
+            'total' => (float) ($data['total'] ?? 0),
+        ]);
 
         return ExtractionResult::complete(
             items: $items,
@@ -140,11 +160,17 @@ class PrismReceiptExtractor implements ReceiptExtractor
 
         if (filled($integration->api_key)) {
             config(['prism.providers.openai.api_key' => $integration->api_key]);
+            Log::info('[Service][PrismReceiptExtractor][resolveCredentials] Usando API key da integração (banco).');
         }
 
         $model = filled($integration->receipt_model)
             ? $integration->receipt_model
             : config('services.openai.receipt_model');
+
+        Log::info('[Service][PrismReceiptExtractor][resolveCredentials] Modelo resolvido.', [
+            'model' => $model,
+            'fonte' => filled($integration->receipt_model) ? 'integração' : 'config',
+        ]);
 
         return ['model' => $model];
     }

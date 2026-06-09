@@ -7,6 +7,7 @@ use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redirect;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -29,13 +30,24 @@ class ProfileController extends Controller
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
+        Log::info('[Controller][ProfileController][update] Inicio da execusão.', [
+            'user_id' => $request->user()->id,
+        ]);
+
         $request->user()->fill($request->validated());
 
         if ($request->user()->isDirty('email')) {
             $request->user()->email_verified_at = null;
+            Log::info('[Controller][ProfileController][update] E-mail alterado: verificação reiniciada.', [
+                'user_id' => $request->user()->id,
+            ]);
         }
 
         $request->user()->save();
+
+        Log::info('[Controller][ProfileController][update] Fim da execusão.', [
+            'user_id' => $request->user()->id,
+        ]);
 
         return Redirect::route('profile.edit');
     }
@@ -45,6 +57,10 @@ class ProfileController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
+        Log::info('[Controller][ProfileController][destroy] Inicio da execusão.', [
+            'user_id' => $request->user()->id,
+        ]);
+
         $request->validate([
             'password' => ['required', 'current_password'],
         ]);
@@ -57,6 +73,10 @@ class ProfileController extends Controller
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();
+
+        Log::info('[Controller][ProfileController][destroy] Conta removida. Fim da execusão.', [
+            'user_id' => $user->id,
+        ]);
 
         return Redirect::to('/');
     }
