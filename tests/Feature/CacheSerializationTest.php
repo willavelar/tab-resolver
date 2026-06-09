@@ -1,5 +1,6 @@
 <?php
 
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 
 /*
@@ -20,16 +21,41 @@ use Illuminate\Support\Collection;
  * This test replicates that exact decode path against the real config so the
  * allowlist can never silently regress to a value that breaks the Pulse cards.
  */
-it('cache serializable_classes permits Illuminate Collections (pulse reverb cards depend on this)', function () {
+/**
+ * Replicates Illuminate\Cache\RedisStore::unserialize() against the real config.
+ *
+ * @return mixed
+ */
+function decodeThroughCacheAllowlist(string $serialized)
+{
     $allowed = config('cache.serializable_classes');
 
-    $serialized = serialize(collect(['app' => collect([1, 2, 3])]));
-
-    $restored = $allowed === null
+    return $allowed === null
         ? unserialize($serialized)
         : unserialize($serialized, ['allowed_classes' => $allowed]);
+}
+
+it('cache serializable_classes permits Illuminate Collections (pulse reverb cards depend on this)', function () {
+    $restored = decodeThroughCacheAllowlist(serialize(collect(['app' => collect([1, 2, 3])])));
 
     expect($restored)->toBeInstanceOf(Collection::class)
         ->and($restored->get('app'))->toBeInstanceOf(Collection::class)
         ->and($restored->get('app')->all())->toBe([1, 2, 3]);
+});
+
+it('cache serializable_classes permits the full pulse servers card row shape', function () {
+    // Mirrors exactly what the Pulse Servers card caches: a Collection of stdClass
+    // rows, each holding nested Collections and a CarbonImmutable timestamp.
+    $row = (object) [
+        'name' => 'web-1',
+        'cpu' => collect([10, 20]),
+        'updated_at' => CarbonImmutable::createFromTimestamp(1_700_000_000),
+    ];
+    $restored = decodeThroughCacheAllowlist(serialize(collect(['web-1' => $row])));
+
+    expect($restored)->toBeInstanceOf(Collection::class)
+        ->and($restored->get('web-1'))->toBeInstanceOf(stdClass::class)
+        ->and($restored->get('web-1')->cpu)->toBeInstanceOf(Collection::class)
+        ->and($restored->get('web-1')->updated_at)->toBeInstanceOf(CarbonImmutable::class)
+        ->and($restored->get('web-1')->updated_at->getTimestamp())->toBe(1_700_000_000);
 });

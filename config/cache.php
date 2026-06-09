@@ -1,5 +1,6 @@
 <?php
 
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
@@ -130,14 +131,21 @@ return [
     | storage. By default, no PHP classes will be unserialized from your
     | cache to prevent gadget chain attacks if your APP_KEY is leaked.
     |
-    | Laravel Pulse memoizes its Reverb dashboard cards as nested
-    | Illuminate\Support\Collection instances through the cache, so that class
-    | must be allow-listed here or /pulse fails with __PHP_Incomplete_Class.
+    | Laravel Pulse memoizes its dashboard cards through the cache. Tracing every
+    | card's cached payload, the complete set of object types it serializes is
+    | Collection (the wrapper), stdClass (each `(object) [...]` row), and
+    | CarbonImmutable (timestamps such as the Servers `updated_at` / Exceptions
+    | `latest`). Pulse needs a shared, lock-capable store (redis) for its
+    | cross-process coordination, and that store honours this allow-list, so all
+    | three must be listed or /pulse fails with __PHP_Incomplete_Class. All three
+    | are gadget-free value types, so the list stays restrictive.
     |
     */
 
     'serializable_classes' => [
         Collection::class,
+        CarbonImmutable::class,
+        stdClass::class,
     ],
 
 ];
