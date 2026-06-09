@@ -3,7 +3,7 @@
 
     <livewire:pulse.usage cols="4" rows="2" />
 
-    <livewire:pulse.queues cols="4" />
+    <livewire:pulse.queues cols="8" />
 
     <livewire:pulse.cache cols="4" />
 
@@ -13,7 +13,11 @@
 
     <livewire:pulse.slow-requests cols="6" />
 
-    <livewire:pulse.slow-jobs cols="6" />
+    <livewire:pulse.slow-jobs cols="8" />
 
     <livewire:pulse.slow-outgoing-requests cols="6" />
+
+    <livewire:reverb.connections cols="full" />
+
+    <livewire:reverb.messages cols="full" />
 </x-pulse>
