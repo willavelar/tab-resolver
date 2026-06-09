@@ -180,6 +180,15 @@ Flow: `POST /sessions/{id}/extract` → `ExtractReceiptItems` job → Prism/Anth
 → persists `session_items` + totals + `raw_extraction` → broadcasts
 `ReceiptExtractionUpdated` on private channel `bill-session.{id}` → Vue updates live.
 
+### Observability (Pulse)
+
+`/pulse` (Laravel Pulse) monitors queues and Reverb in one dashboard. Storage is
+MySQL (`pulse_*` tables). Access is gated to admins via the `viewPulse` gate
+(reuses `User::$is_admin`, mirroring `manage-integrations`). The `pulse` compose
+service runs `php artisan pulse:check` — required for aggregation and for the
+Reverb connection cards to populate (they poll). Slow-jobs threshold is raised to
+30s for `ExtractReceiptItems` (slow by design) via `config/pulse.php`.
+
 ### Testing conventions
 
 - **Pest** is the test runner — write tests using Pest syntax (`it()`, `test()`, `expect()`), not PHPUnit class style.
