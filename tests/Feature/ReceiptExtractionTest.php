@@ -261,6 +261,77 @@ test('the job forces a final result once the round cap is reached', function () 
     expect($session->status)->toBe(ExtractionStatus::Completed);
 });
 
+test('the job parks for clarification when the extracted totals do not reconcile', function () {
+    Event::fake();
+    $this->app->instance(ReceiptExtractor::class, new class implements ReceiptExtractor
+    {
+        public function extract(string $absoluteImagePath, array $answered = [], bool $forceFinal = false): ExtractionResult
+        {
+            // Reads "complete" but the items (30 + 20 = 50) do not match the subtotal (48).
+            return ExtractionResult::complete(
+                items: [
+                    ['name' => 'Cerveja', 'quantity' => 2.0, 'unit_price' => 15.0, 'total_price' => 30.0, 'category' => 'drink'],
+                    ['name' => 'Batata', 'quantity' => 1.0, 'unit_price' => 20.0, 'total_price' => 20.0, 'category' => 'food'],
+                ],
+                subtotal: 48.0,
+                serviceCharge: 5.0,
+                serviceChargePercentage: 10.0,
+                total: 53.0,
+                raw: ['status' => 'complete'],
+            );
+        }
+    });
+
+    $session = Session::factory()->for(User::factory())->create([
+        'status' => ExtractionStatus::Processing,
+        'image_path' => 'receipts/example.jpg',
+    ]);
+
+    ExtractReceiptItems::dispatchSync($session);
+    $session->refresh();
+
+    expect($session->status)->toBe(ExtractionStatus::NeedsClarification)
+        ->and($session->items()->count())->toBe(0)
+        ->and($session->clarifications['pending'])->toHaveCount(1)
+        ->and($session->clarifications['pending'][0]['id'])->toBe('recon_subtotal');
+
+    Event::assertDispatched(ReceiptExtractionUpdated::class, function ($e) use ($session) {
+        return $e->sessionId === $session->id && $e->status === ExtractionStatus::NeedsClarification->value;
+    });
+});
+
+test('reconciliation does not block the final forced round', function () {
+    Event::fake();
+    $this->app->instance(ReceiptExtractor::class, new class implements ReceiptExtractor
+    {
+        public function extract(string $absoluteImagePath, array $answered = [], bool $forceFinal = false): ExtractionResult
+        {
+            return ExtractionResult::complete(
+                items: [
+                    ['name' => 'Cerveja', 'quantity' => 2.0, 'unit_price' => 15.0, 'total_price' => 30.0, 'category' => 'drink'],
+                ],
+                subtotal: 48.0,
+                serviceCharge: 5.0,
+                serviceChargePercentage: 10.0,
+                total: 53.0,
+                raw: ['status' => 'complete'],
+            );
+        }
+    });
+
+    $session = Session::factory()->for(User::factory())->create([
+        'status' => ExtractionStatus::Processing,
+        'image_path' => 'receipts/example.jpg',
+        'clarifications' => ['round' => 2, 'answered' => [], 'pending' => []],
+    ]);
+
+    ExtractReceiptItems::dispatchSync($session);
+    $session->refresh();
+
+    expect($session->status)->toBe(ExtractionStatus::Completed)
+        ->and($session->items()->count())->toBe(1);
+});
+
 test('the owner can answer clarification questions and re-dispatch', function () {
     Queue::fake();
     $owner = User::factory()->create();

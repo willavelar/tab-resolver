@@ -7,6 +7,7 @@ use App\Events\ReceiptExtractionUpdated;
 use App\Models\Session;
 use App\Services\Receipt\ExtractionResult;
 use App\Services\Receipt\ReceiptExtractor;
+use App\Services\Receipt\ReceiptReconciliation;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -65,21 +66,7 @@ class ExtractReceiptItems implements ShouldQueue
         $result = $extractor->extract($absolutePath, $answered, $forceFinal);
 
         if ($result->needsInput() && ! $forceFinal) {
-            $this->session->forceFill([
-                'status' => ExtractionStatus::NeedsClarification,
-                'clarifications' => [
-                    'round' => $round,
-                    'answered' => $answered,
-                    'pending' => $result->questions,
-                ],
-                'raw_extraction' => $result->raw,
-                'failure_reason' => null,
-            ])->save();
-
-            event(new ReceiptExtractionUpdated(
-                $this->session->id,
-                ExtractionStatus::NeedsClarification->value,
-            ));
+            $this->requestClarification($round, $answered, $result->questions, $result->raw);
 
             Log::info('[Job][ExtractReceiptItems][handle] Extração precisa de esclarecimento. Fim da execusão.', [
                 'session_id' => $this->session->id,
@@ -88,6 +75,30 @@ class ExtractReceiptItems implements ShouldQueue
             ]);
 
             return;
+        }
+
+        // A IA leu a conta, mas pode ter lido valores errados: confere se a conta
+        // fecha (linhas, soma vs. subtotal, subtotal + gorjeta vs. total). Na rodada
+        // final não bloqueia — respeita o cap de rodadas e conclui mesmo assim.
+        if (! $forceFinal) {
+            $reconQuestions = ReceiptReconciliation::check(
+                $result->items,
+                $result->subtotal,
+                $result->serviceCharge,
+                $result->total,
+            );
+
+            if ($reconQuestions !== []) {
+                $this->requestClarification($round, $answered, $reconQuestions, $result->raw);
+
+                Log::info('[Job][ExtractReceiptItems][handle] Conta não fechou na reconciliação. Fim da execusão.', [
+                    'session_id' => $this->session->id,
+                    'divergencias' => count($reconQuestions),
+                    'round' => $round,
+                ]);
+
+                return;
+            }
         }
 
         $this->session->items()->delete();
@@ -126,6 +137,33 @@ class ExtractReceiptItems implements ShouldQueue
             'subtotal' => $result->subtotal,
             'total' => $result->total,
         ]);
+    }
+
+    /**
+     * Estaciona a sessão aguardando esclarecimento do dono, reaproveitado tanto
+     * pelas perguntas da IA quanto pelas divergências da reconciliação.
+     *
+     * @param  array<int, array{question: string, answer: string}>  $answered
+     * @param  array<int, array{id: string, prompt: string, type: string, options: array<int, string>}>  $questions
+     * @param  array<string, mixed>  $raw
+     */
+    private function requestClarification(int $round, array $answered, array $questions, array $raw): void
+    {
+        $this->session->forceFill([
+            'status' => ExtractionStatus::NeedsClarification,
+            'clarifications' => [
+                'round' => $round,
+                'answered' => $answered,
+                'pending' => $questions,
+            ],
+            'raw_extraction' => $raw,
+            'failure_reason' => null,
+        ])->save();
+
+        event(new ReceiptExtractionUpdated(
+            $this->session->id,
+            ExtractionStatus::NeedsClarification->value,
+        ));
     }
 
     public function failed(Throwable $exception): void
