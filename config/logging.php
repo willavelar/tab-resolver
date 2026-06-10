@@ -54,7 +54,7 @@ return [
 
         'stack' => [
             'driver' => 'stack',
-            'channels' => explode(',', (string) env('LOG_STACK', 'daily')),
+            'channels' => explode(',', (string) env('LOG_STACK', 'laravel,debug')),
             'ignore_exceptions' => false,
         ],
 
@@ -65,6 +65,26 @@ return [
             'replace_placeholders' => true,
         ],
 
+        // Errors only (error, critical, alert, emergency) → laravel-YYYY-MM-DD.log
+        'laravel' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/laravel.log'),
+            'level' => env('LOG_ERROR_LEVEL', 'error'),
+            'days' => env('LOG_DAILY_DAYS', 14),
+            'replace_placeholders' => true,
+        ],
+
+        // Everything below error (debug, info, notice, warning) → debug-YYYY-MM-DD.log
+        'debug' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/debug.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => env('LOG_DAILY_DAYS', 14),
+            'replace_placeholders' => true,
+            'tap' => [App\Logging\LimitToDebugLevels::class],
+        ],
+
+        // Kept for compatibility — single dated file with every level.
         'daily' => [
             'driver' => 'daily',
             'path' => storage_path('logs/laravel.log'),
