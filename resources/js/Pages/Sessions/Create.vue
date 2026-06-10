@@ -59,8 +59,8 @@ const submit = () => {
         </template>
 
         <div class="py-12">
-            <div class="max-w-lg mx-auto sm:px-6 lg:px-8">
-                <div class="rounded-lg border border-hairline bg-surface-card p-8">
+            <div class="max-w-lg mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="rounded-lg border border-hairline bg-surface-card p-5 sm:p-8">
                     <form @submit.prevent="submit" class="space-y-6">
                         <div>
                             <InputLabel for="title" value="Nome da sessão" />
@@ -83,9 +83,9 @@ const submit = () => {
                                 @click="imageInput.click()"
                             >
                                 <template v-if="!form.image">
-                                    <div class="text-4xl mb-3">📷</div>
-                                    <p class="text-sm text-body">Clique para selecionar a foto da conta</p>
-                                    <p class="text-xs text-muted mt-1">JPG, PNG ou HEIC</p>
+                                    <div class="text-5xl mb-3">📷</div>
+                                    <p class="text-base text-body">Clique para selecionar a foto da conta</p>
+                                    <p class="text-sm text-muted mt-1">JPG, PNG ou HEIC</p>
                                 </template>
                                 <template v-else>
                                     <img
@@ -108,7 +108,7 @@ const submit = () => {
                         </div>
 
                         <div class="rounded-md border border-hairline bg-surface-strong p-4">
-                            <p class="text-sm text-body">
+                            <p class="text-base text-body">
                                 ✨ A IA irá ler os itens da conta automaticamente após o upload.
                             </p>
                         </div>

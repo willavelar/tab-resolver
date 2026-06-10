@@ -132,12 +132,15 @@ onBeforeUnmount(() => {
     <Head :title="session.title" />
 
     <PublicLayout>
-        <div class="rounded-lg border border-hairline bg-surface-card p-6">
-            <h1 class="text-xl font-semibold text-ink">{{ session.title }}</h1>
-            <p class="mt-1 text-sm text-muted">Diga o que você consumiu desta conta.</p>
+        <div class="rounded-lg border border-hairline bg-surface-card p-5 sm:p-6">
+            <h1 class="text-2xl font-semibold text-ink">{{ session.title }}</h1>
+            <p class="mt-1 text-base text-muted">Diga o que você consumiu desta conta.</p>
 
-            <div v-if="session.status === 'completed'" class="mt-4">
-                <h3 class="text-sm font-semibold text-ink">Itens da conta</h3>
+            <div
+                v-if="session.status === 'completed'"
+                class="mt-4 rounded-lg border border-hairline bg-surface-strong p-4"
+            >
+                <h3 class="text-base font-semibold text-ink">Itens da conta</h3>
 
                 <div
                     v-for="group in [
@@ -150,7 +153,7 @@ onBeforeUnmount(() => {
                         <h4 class="mt-4 text-xs font-semibold uppercase tracking-wide text-muted">
                             {{ group.title }}
                         </h4>
-                        <div class="mt-2 overflow-hidden rounded-md border border-hairline">
+                        <div class="mt-2 overflow-hidden rounded-md border border-hairline bg-surface-card">
                             <table class="w-full text-sm">
                                 <thead class="bg-surface-strong text-muted">
                                     <tr>
@@ -177,7 +180,7 @@ onBeforeUnmount(() => {
                     </template>
                 </div>
 
-                <div class="mt-4 overflow-hidden rounded-md border border-hairline-strong">
+                <div class="mt-4 overflow-hidden rounded-md border border-hairline-strong bg-surface-card">
                     <table class="w-full text-sm">
                         <tbody>
                             <tr>
@@ -198,10 +201,6 @@ onBeforeUnmount(() => {
                     </table>
                 </div>
 
-                <div v-if="session.summary_markdown" class="mt-6">
-                    <h3 class="text-sm font-semibold text-ink">Resumo</h3>
-                    <pre class="mt-2 whitespace-pre-wrap rounded-md border border-hairline bg-surface-strong p-4 text-sm text-body">{{ session.summary_markdown }}</pre>
-                </div>
             </div>
 
             <div v-else class="mt-4 overflow-hidden rounded-lg border border-hairline">
@@ -216,11 +215,11 @@ onBeforeUnmount(() => {
                 v-if="sent"
                 class="mt-6 rounded-md border border-hairline bg-surface-strong p-4 text-center"
             >
-                <p class="text-sm text-body">
+                <p class="text-base text-body">
                     ✓ Enviado<span v-if="submittedName">, {{ submittedName }}</span>! Obrigado por
                     participar.
                 </p>
-                <p class="mt-1 text-xs text-muted">Você já participou desta conta.</p>
+                <p class="mt-1 text-sm text-muted">Você já participou desta conta.</p>
             </div>
 
             <!-- Seu valor a pagar (após a análise) -->
@@ -228,8 +227,8 @@ onBeforeUnmount(() => {
                 v-if="session.analysis_status === 'completed' && myBreakdown"
                 class="mt-6 rounded-md border border-hairline-strong bg-surface-strong p-4"
             >
-                <h2 class="text-sm font-semibold text-ink">Seu valor a pagar</h2>
-                <ul class="mt-3 space-y-1 text-sm text-body">
+                <h2 class="text-base font-semibold text-ink">Seu valor a pagar</h2>
+                <ul class="mt-3 space-y-1 text-base text-body">
                     <li v-for="(item, idx) in (myBreakdown.items ?? [])" :key="idx">
                         {{ Number(item.quantity) }}x {{ item.name }} — {{ brl(item.total_price) }}
                     </li>
@@ -270,11 +269,11 @@ onBeforeUnmount(() => {
                 <div>
                     <InputLabel value="Como você quer enviar?" />
                     <div
-                        class="mt-1 inline-flex rounded-md border border-hairline bg-surface-strong p-1"
+                        class="mt-1 flex rounded-md border border-hairline bg-surface-strong p-1"
                     >
                         <button
                             type="button"
-                            class="rounded px-4 py-1.5 text-sm font-medium transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-primary"
+                            class="flex-1 rounded px-4 py-2.5 text-base font-medium transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-primary"
                             :class="
                                 mode === 'audio'
                                     ? 'bg-surface-card text-ink shadow-sm'
@@ -286,7 +285,7 @@ onBeforeUnmount(() => {
                         </button>
                         <button
                             type="button"
-                            class="rounded px-4 py-1.5 text-sm font-medium transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-primary"
+                            class="flex-1 rounded px-4 py-2.5 text-base font-medium transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-primary"
                             :class="
                                 mode === 'text'
                                     ? 'bg-surface-card text-ink shadow-sm'

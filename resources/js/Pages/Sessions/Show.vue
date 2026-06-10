@@ -65,17 +65,6 @@ const drinkItems = computed(() =>
     (props.session.items ?? []).filter((i) => i.category === 'drink'),
 );
 
-const summaryCopied = ref(false);
-const copySummary = async () => {
-    try {
-        await navigator.clipboard.writeText(props.session.summary_markdown ?? '');
-        summaryCopied.value = true;
-        setTimeout(() => (summaryCopied.value = false), 2000);
-    } catch {
-        summaryCopied.value = false;
-    }
-};
-
 // --- Bill analysis (split calculation) ---
 const analyzeForm = useForm({});
 const analysisClarifyForm = useForm({ answers: {} });
@@ -101,10 +90,14 @@ const analysisGrandTotal = computed(() =>
     analysisParticipants.value.reduce((sum, p) => sum + Number(p.total ?? 0), 0),
 );
 
-const toggleFoodShared = () => {
+const setFoodShared = (value) => {
+    if (value === props.session.food_shared) {
+        return;
+    }
+
     router.patch(
         route('sessions.food-shared', props.session.id),
-        { food_shared: !props.session.food_shared },
+        { food_shared: value },
         { preserveScroll: true },
     );
 };
@@ -173,13 +166,13 @@ onBeforeUnmount(() => {
         </template>
 
         <div class="py-12">
-            <div class="max-w-lg mx-auto sm:px-6 lg:px-8">
-                <div class="rounded-lg border border-hairline bg-surface-card p-8">
+            <div class="max-w-lg mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="rounded-lg border border-hairline bg-surface-card p-5 sm:p-8">
                     <p class="text-sm text-muted">Criada em {{ session.created_at }}</p>
 
                     <div class="mt-6 rounded-md border border-hairline bg-surface-strong p-4">
-                        <span class="text-sm font-medium text-body">Link público (sem login)</span>
-                        <p class="mt-1 text-xs text-muted">
+                        <span class="text-base font-medium text-body">Link público (sem login)</span>
+                        <p class="mt-1 text-sm text-muted">
                             Compartilhe com quem estava na mesa para enviar nome e o que consumiu.
                         </p>
 
@@ -193,7 +186,7 @@ onBeforeUnmount(() => {
 
                         <button
                             type="button"
-                            class="mt-3 inline-flex items-center justify-center gap-1.5 rounded-md border border-hairline-strong bg-surface-card px-[17px] py-2 text-sm font-medium text-ink transition-colors duration-150 hover:bg-canvas-soft focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-canvas"
+                            class="mt-3 inline-flex w-full sm:w-auto items-center justify-center gap-1.5 rounded-md border border-hairline-strong bg-surface-card px-5 py-3 text-base font-medium text-ink transition-colors duration-150 hover:bg-canvas-soft focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-canvas"
                             @click="copyPublicLink"
                         >
                             {{ publicCopied ? '✓ Copiado!' : '📋 Copiar link público' }}
@@ -201,7 +194,7 @@ onBeforeUnmount(() => {
                     </div>
 
                     <div class="mt-6">
-                        <h3 class="text-sm font-semibold text-ink">
+                        <h3 class="text-base font-semibold text-ink">
                             Participantes
                             <span class="text-muted">({{ participants.length }})</span>
                         </h3>
@@ -217,7 +210,7 @@ onBeforeUnmount(() => {
                                 class="rounded-md border border-hairline bg-surface-strong p-3"
                             >
                                 <div class="flex items-center justify-between gap-2">
-                                    <span class="text-sm font-medium text-ink">{{ participant.name }}</span>
+                                    <span class="text-base font-medium text-ink">{{ participant.name }}</span>
                                     <span class="flex gap-1">
                                         <span
                                             v-if="participant.has_text"
@@ -258,10 +251,10 @@ onBeforeUnmount(() => {
                             v-if="session.status === 'pending'"
                             class="rounded-md border border-hairline bg-surface-strong p-4 text-center"
                         >
-                            <p class="text-sm text-body">Pronto para ler os itens desta conta com IA.</p>
+                            <p class="text-base text-body">Pronto para ler os itens desta conta com IA.</p>
                             <button
                                 type="button"
-                                class="mt-3 inline-flex items-center justify-center gap-1.5 rounded-md border border-transparent bg-primary px-[18px] py-2.5 text-sm font-medium text-on-primary transition-colors duration-150 hover:bg-primary-active focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-canvas disabled:opacity-50"
+                                class="mt-3 inline-flex w-full sm:w-auto items-center justify-center gap-1.5 rounded-md border border-transparent bg-primary px-5 py-3 text-base font-medium text-on-primary transition-colors duration-150 hover:bg-primary-active focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-canvas disabled:opacity-50"
                                 :disabled="extracting"
                                 @click="triggerExtraction"
                             >
@@ -278,7 +271,7 @@ onBeforeUnmount(() => {
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                             </svg>
-                            <p class="text-sm text-body">Lendo a conta... isso pode levar alguns segundos.</p>
+                            <p class="text-base text-body">Lendo a conta... isso pode levar alguns segundos.</p>
                         </div>
 
                         <!-- needs clarification -->
@@ -303,7 +296,7 @@ onBeforeUnmount(() => {
                                             v-for="option in question.options"
                                             :key="option"
                                             type="button"
-                                            class="rounded-md border px-3 py-1.5 text-sm transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-primary"
+                                            class="rounded-md border px-4 py-2.5 text-base transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-primary"
                                             :class="clarifyForm.answers[question.id] === option
                                                 ? 'border-primary bg-primary text-on-primary'
                                                 : 'border-hairline-strong bg-surface-card text-ink hover:bg-canvas-soft'"
@@ -324,7 +317,7 @@ onBeforeUnmount(() => {
 
                                 <button
                                     type="submit"
-                                    class="inline-flex items-center justify-center gap-1.5 rounded-md border border-transparent bg-primary px-[18px] py-2.5 text-sm font-medium text-on-primary transition-colors duration-150 hover:bg-primary-active focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-canvas disabled:opacity-50"
+                                    class="inline-flex w-full sm:w-auto items-center justify-center gap-1.5 rounded-md border border-transparent bg-primary px-5 py-3 text-base font-medium text-on-primary transition-colors duration-150 hover:bg-primary-active focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-canvas disabled:opacity-50"
                                     :disabled="clarifyForm.processing || !allClarificationsAnswered"
                                 >
                                     Enviar respostas
@@ -342,7 +335,7 @@ onBeforeUnmount(() => {
                             </p>
                             <button
                                 type="button"
-                                class="mt-3 inline-flex items-center justify-center gap-1.5 rounded-md border border-hairline-strong bg-surface-card px-[17px] py-2.5 text-sm font-medium text-ink transition-colors duration-150 hover:bg-canvas-soft focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-canvas disabled:opacity-50"
+                                class="mt-3 inline-flex w-full sm:w-auto items-center justify-center gap-1.5 rounded-md border border-hairline-strong bg-surface-card px-5 py-3 text-base font-medium text-ink transition-colors duration-150 hover:bg-canvas-soft focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-canvas disabled:opacity-50"
                                 :disabled="extracting"
                                 @click="triggerExtraction"
                             >
@@ -352,7 +345,7 @@ onBeforeUnmount(() => {
 
                         <!-- completed -->
                         <div v-else-if="session.status === 'completed'">
-                            <h3 class="text-sm font-semibold text-ink">Itens da conta</h3>
+                            <h3 class="text-base font-semibold text-ink">Itens da conta</h3>
 
                             <div
                                 v-for="group in [
@@ -413,38 +406,42 @@ onBeforeUnmount(() => {
                                 </table>
                             </div>
 
-                            <div v-if="session.summary_markdown" class="mt-6">
-                                <div class="flex items-center justify-between">
-                                    <h3 class="text-sm font-semibold text-ink">Resumo</h3>
-                                    <button
-                                        type="button"
-                                        class="inline-flex items-center gap-1.5 rounded-md border border-hairline-strong bg-surface-card px-3 py-1.5 text-xs font-medium text-ink transition-colors duration-150 hover:bg-canvas-soft focus:outline-none focus:ring-2 focus:ring-primary"
-                                        @click="copySummary"
-                                    >
-                                        {{ summaryCopied ? '✓ Copiado!' : '📋 Copiar resumo' }}
-                                    </button>
-                                </div>
-                                <pre class="mt-2 whitespace-pre-wrap rounded-md border border-hairline bg-surface-strong p-4 text-sm text-body">{{ session.summary_markdown }}</pre>
-                            </div>
-
                             <!-- Bill analysis -->
                             <div class="mt-8 border-t border-hairline pt-6">
-                                <div class="flex items-center justify-between gap-3">
-                                    <h3 class="text-sm font-semibold text-ink">Análise da conta</h3>
+                                <h3 class="text-base font-semibold text-ink">Análise da conta</h3>
 
-                                    <label class="flex cursor-pointer items-center gap-2 text-sm text-body">
-                                        <input
-                                            type="checkbox"
-                                            class="rounded border-hairline-strong text-primary focus:ring-primary"
-                                            :checked="session.food_shared"
-                                            :disabled="session.analysis_status === 'processing'"
-                                            @change="toggleFoodShared"
-                                        />
+                                <div
+                                    class="mt-3 flex w-full rounded-md border border-hairline bg-surface-strong p-1"
+                                >
+                                    <button
+                                        type="button"
+                                        class="flex-1 rounded px-3 py-2.5 text-sm font-medium transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
+                                        :class="
+                                            session.food_shared
+                                                ? 'bg-surface-card text-ink shadow-sm'
+                                                : 'text-muted hover:text-body'
+                                        "
+                                        :disabled="session.analysis_status === 'processing'"
+                                        @click="setFoodShared(true)"
+                                    >
                                         Comida compartilhada
-                                    </label>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="flex-1 rounded px-3 py-2.5 text-sm font-medium transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
+                                        :class="
+                                            !session.food_shared
+                                                ? 'bg-surface-card text-ink shadow-sm'
+                                                : 'text-muted hover:text-body'
+                                        "
+                                        :disabled="session.analysis_status === 'processing'"
+                                        @click="setFoodShared(false)"
+                                    >
+                                        Comida não compartilhada
+                                    </button>
                                 </div>
 
-                                <p class="mt-1 text-xs text-muted">
+                                <p class="mt-2 text-xs text-muted">
                                     Comida não reivindicada é dividida igualmente; bebidas são sempre individuais.
                                 </p>
 
@@ -455,7 +452,7 @@ onBeforeUnmount(() => {
                                 >
                                     <button
                                         type="button"
-                                        class="inline-flex items-center justify-center gap-1.5 rounded-md border border-transparent bg-primary px-[18px] py-2.5 text-sm font-medium text-on-primary transition-colors duration-150 hover:bg-primary-active focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-canvas disabled:opacity-50"
+                                        class="inline-flex w-full sm:w-auto items-center justify-center gap-1.5 rounded-md border border-transparent bg-primary px-5 py-3 text-base font-medium text-on-primary transition-colors duration-150 hover:bg-primary-active focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-canvas disabled:opacity-50"
                                         :disabled="!canAnalyze || analyzeForm.processing"
                                         @click="runAnalysis"
                                     >
@@ -501,7 +498,7 @@ onBeforeUnmount(() => {
                                                     v-for="option in question.options"
                                                     :key="option"
                                                     type="button"
-                                                    class="rounded-md border px-3 py-1.5 text-sm transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-primary"
+                                                    class="rounded-md border px-4 py-2.5 text-base transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-primary"
                                                     :class="analysisClarifyForm.answers[question.id] === option
                                                         ? 'border-primary bg-primary text-on-primary'
                                                         : 'border-hairline-strong bg-surface-card text-ink hover:bg-canvas-soft'"
@@ -522,7 +519,7 @@ onBeforeUnmount(() => {
 
                                         <button
                                             type="submit"
-                                            class="inline-flex items-center justify-center gap-1.5 rounded-md border border-transparent bg-primary px-[18px] py-2.5 text-sm font-medium text-on-primary transition-colors duration-150 hover:bg-primary-active focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-canvas disabled:opacity-50"
+                                            class="inline-flex w-full sm:w-auto items-center justify-center gap-1.5 rounded-md border border-transparent bg-primary px-5 py-3 text-base font-medium text-on-primary transition-colors duration-150 hover:bg-primary-active focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-canvas disabled:opacity-50"
                                             :disabled="analysisClarifyForm.processing || !allAnalysisAnswered"
                                         >
                                             Enviar respostas
@@ -541,8 +538,8 @@ onBeforeUnmount(() => {
                                         class="rounded-md border border-hairline bg-surface-strong p-4"
                                     >
                                         <div class="flex items-center justify-between gap-2">
-                                            <span class="text-sm font-semibold text-ink">{{ person.name }}</span>
-                                            <span class="text-sm font-semibold text-ink">{{ brl(person.total) }}</span>
+                                            <span class="text-base font-semibold text-ink">{{ person.name }}</span>
+                                            <span class="text-base font-semibold text-ink">{{ brl(person.total) }}</span>
                                         </div>
                                         <ul class="mt-2 space-y-1 text-sm text-body">
                                             <li v-for="(item, idx) in (person.items ?? [])" :key="idx">
@@ -558,8 +555,8 @@ onBeforeUnmount(() => {
                                     </div>
 
                                     <div class="flex items-center justify-between border-t border-hairline pt-3">
-                                        <span class="text-sm font-semibold text-ink">Total</span>
-                                        <span class="text-sm font-semibold text-ink">{{ brl(analysisGrandTotal) }}</span>
+                                        <span class="text-base font-semibold text-ink">Total</span>
+                                        <span class="text-base font-semibold text-ink">{{ brl(analysisGrandTotal) }}</span>
                                     </div>
                                 </div>
                             </div>

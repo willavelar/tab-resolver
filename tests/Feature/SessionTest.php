@@ -135,3 +135,36 @@ test('the show page exposes category, tip percentage, clarifications and summary
             ->where('session.summary_markdown', fn ($v) => str_contains((string) $v, '## Bebida'))
         );
 });
+
+test('dashboard shows the authenticated user sessions with title and date', function () {
+    $user = User::factory()->create();
+    $session = Session::factory()->for($user)->create([
+        'title' => 'Churrasco de sábado',
+        'status' => ExtractionStatus::Completed,
+    ]);
+
+    $this
+        ->actingAs($user)
+        ->get('/dashboard')
+        ->assertInertia(fn ($page) => $page
+            ->component('Dashboard')
+            ->has('sessions', 1)
+            ->where('sessions.0.id', $session->id)
+            ->where('sessions.0.title', 'Churrasco de sábado')
+            ->where('sessions.0.status', 'completed')
+            ->where('sessions.0.created_at', $session->created_at->format('d/m/Y H:i'))
+        );
+});
+
+test('dashboard does not show sessions owned by other users', function () {
+    $user = User::factory()->create();
+    Session::factory()->create(['title' => 'Sessão alheia']);
+
+    $this
+        ->actingAs($user)
+        ->get('/dashboard')
+        ->assertInertia(fn ($page) => $page
+            ->component('Dashboard')
+            ->has('sessions', 0)
+        );
+});

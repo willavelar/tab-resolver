@@ -24,6 +24,23 @@ use Inertia\Response;
 
 class SessionController extends Controller
 {
+    public function index(): Response
+    {
+        $sessions = auth()->user()->sessions()
+            ->latest()
+            ->get(['id', 'title', 'status', 'created_at'])
+            ->map(fn (Session $session) => [
+                'id' => $session->id,
+                'title' => $session->title,
+                'status' => $session->status->value,
+                'created_at' => $session->created_at->format('d/m/Y H:i'),
+            ]);
+
+        return Inertia::render('Dashboard', [
+            'sessions' => $sessions,
+        ]);
+    }
+
     public function create(): Response
     {
         return Inertia::render('Sessions/Create');
