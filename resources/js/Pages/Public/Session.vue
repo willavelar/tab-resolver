@@ -5,8 +5,8 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import PublicLayout from '@/Layouts/PublicLayout.vue';
-import { Head, useForm } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { Head, router, useForm } from '@inertiajs/vue3';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
 const props = defineProps({
     session: {
@@ -19,6 +19,14 @@ const props = defineProps({
     },
     submittedName: {
         type: String,
+        default: null,
+    },
+    myBreakdown: {
+        type: Object,
+        default: null,
+    },
+    myAmountDue: {
+        type: [String, Number],
         default: null,
     },
 });
@@ -97,6 +105,27 @@ const foodItems = computed(() =>
 const drinkItems = computed(() =>
     (props.session.items ?? []).filter((i) => i.category === 'drink'),
 );
+
+// Live: reload when the owner finishes the analysis, to reveal this device's amount.
+let publicChannel = null;
+const publicChannelName = `bill-session.${props.session.token}.public`;
+
+onMounted(() => {
+    if (!window.Echo || publicChannel) {
+        return;
+    }
+    publicChannel = window.Echo.channel(publicChannelName);
+    publicChannel.listen('.analysis.completed', () => {
+        router.reload();
+    });
+});
+
+onBeforeUnmount(() => {
+    if (publicChannel) {
+        window.Echo.leave(publicChannelName);
+        publicChannel = null;
+    }
+});
 </script>
 
 <template>
@@ -194,7 +223,37 @@ const drinkItems = computed(() =>
                 <p class="mt-1 text-xs text-muted">Você já participou desta conta.</p>
             </div>
 
-            <form v-else class="mt-6 space-y-5" @submit.prevent="submit">
+            <!-- Seu valor a pagar (após a análise) -->
+            <div
+                v-if="session.analysis_status === 'completed' && myBreakdown"
+                class="mt-6 rounded-md border border-hairline-strong bg-surface-strong p-4"
+            >
+                <h2 class="text-sm font-semibold text-ink">Seu valor a pagar</h2>
+                <ul class="mt-3 space-y-1 text-sm text-body">
+                    <li v-for="(item, idx) in (myBreakdown.items ?? [])" :key="idx">
+                        {{ Number(item.quantity) }}x {{ item.name }} — {{ brl(item.total_price) }}
+                    </li>
+                    <li v-if="Number(myBreakdown.shared_food_share) > 0">
+                        Parte da comida compartilhada — {{ brl(myBreakdown.shared_food_share) }}
+                    </li>
+                </ul>
+                <div class="mt-2 text-xs text-muted">
+                    Subtotal {{ brl(myBreakdown.subtotal) }} · Gorjeta {{ brl(myBreakdown.tip) }}
+                </div>
+                <div class="mt-3 flex items-center justify-between border-t border-hairline pt-3">
+                    <span class="text-base font-semibold text-ink">Total</span>
+                    <span class="text-base font-semibold text-ink">{{ brl(myBreakdown.total) }}</span>
+                </div>
+            </div>
+
+            <p
+                v-else-if="session.analysis_status === 'completed' && !myBreakdown"
+                class="mt-6 text-sm text-muted"
+            >
+                A conta foi finalizada. Você não enviou o que consumiu neste dispositivo.
+            </p>
+
+            <form v-if="!sent" class="mt-6 space-y-5" @submit.prevent="submit">
                 <div>
                     <InputLabel for="name" value="Seu nome" />
                     <TextInput
