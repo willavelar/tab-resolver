@@ -107,7 +107,75 @@ const drinkItems = computed(() =>
             <h1 class="text-xl font-semibold text-ink">{{ session.title }}</h1>
             <p class="mt-1 text-sm text-muted">Diga o que você consumiu desta conta.</p>
 
-            <div class="mt-4 overflow-hidden rounded-lg border border-hairline">
+            <div v-if="session.status === 'completed'" class="mt-4">
+                <h3 class="text-sm font-semibold text-ink">Itens da conta</h3>
+
+                <div
+                    v-for="group in [
+                        { title: 'Comida', items: foodItems },
+                        { title: 'Bebida', items: drinkItems },
+                    ]"
+                    :key="group.title"
+                >
+                    <template v-if="group.items.length">
+                        <h4 class="mt-4 text-xs font-semibold uppercase tracking-wide text-muted">
+                            {{ group.title }}
+                        </h4>
+                        <div class="mt-2 overflow-hidden rounded-md border border-hairline">
+                            <table class="w-full text-sm">
+                                <thead class="bg-surface-strong text-muted">
+                                    <tr>
+                                        <th class="px-3 py-2 text-left font-medium">Item</th>
+                                        <th class="px-3 py-2 text-right font-medium">Qtd</th>
+                                        <th class="px-3 py-2 text-right font-medium">Unit.</th>
+                                        <th class="px-3 py-2 text-right font-medium">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr
+                                        v-for="item in group.items"
+                                        :key="item.id"
+                                        class="border-t border-hairline"
+                                    >
+                                        <td class="px-3 py-2 text-ink">{{ item.name }}</td>
+                                        <td class="px-3 py-2 text-right text-body">{{ Number(item.quantity) }}</td>
+                                        <td class="px-3 py-2 text-right text-body">{{ brl(item.unit_price) }}</td>
+                                        <td class="px-3 py-2 text-right text-body">{{ brl(item.total_price) }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </template>
+                </div>
+
+                <div class="mt-4 overflow-hidden rounded-md border border-hairline-strong">
+                    <table class="w-full text-sm">
+                        <tbody>
+                            <tr>
+                                <td class="px-3 py-2 text-right text-muted">Sub-total</td>
+                                <td class="px-3 py-2 text-right text-body w-32">{{ brl(session.subtotal) }}</td>
+                            </tr>
+                            <tr v-if="Number(session.service_charge) > 0">
+                                <td class="px-3 py-2 text-right text-muted">
+                                    Gorjeta<span v-if="session.service_charge_percentage"> ({{ Number(session.service_charge_percentage) }}%)</span>
+                                </td>
+                                <td class="px-3 py-2 text-right text-body">{{ brl(session.service_charge) }}</td>
+                            </tr>
+                            <tr class="border-t border-hairline">
+                                <td class="px-3 py-2 text-right font-semibold text-ink">Total</td>
+                                <td class="px-3 py-2 text-right font-semibold text-ink">{{ brl(session.total) }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div v-if="session.summary_markdown" class="mt-6">
+                    <h3 class="text-sm font-semibold text-ink">Resumo</h3>
+                    <pre class="mt-2 whitespace-pre-wrap rounded-md border border-hairline bg-surface-strong p-4 text-sm text-body">{{ session.summary_markdown }}</pre>
+                </div>
+            </div>
+
+            <div v-else class="mt-4 overflow-hidden rounded-lg border border-hairline">
                 <img
                     :src="session.image_url"
                     :alt="`Foto da conta — ${session.title}`"
