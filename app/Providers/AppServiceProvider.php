@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\Models\User;
+use App\Services\Bill\BillSplitter;
+use App\Services\Bill\PrismBillSplitter;
 use App\Services\Receipt\PrismReceiptExtractor;
 use App\Services\Receipt\ReceiptExtractor;
 use Illuminate\Support\Facades\Gate;
@@ -19,6 +21,11 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(
             ReceiptExtractor::class,
             PrismReceiptExtractor::class,
+        );
+
+        $this->app->bind(
+            BillSplitter::class,
+            PrismBillSplitter::class,
         );
     }
 

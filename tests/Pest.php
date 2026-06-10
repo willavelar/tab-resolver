@@ -1,5 +1,7 @@
 <?php
 
+use App\Services\Bill\BillSplitter;
+use App\Services\Bill\FakeBillSplitter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -17,6 +19,13 @@ use Tests\TestCase;
 pest()->extend(TestCase::class)
     ->use(RefreshDatabase::class)
     ->in('Feature');
+
+pest()->beforeEach(function () {
+    $this->app->bind(
+        BillSplitter::class,
+        FakeBillSplitter::class,
+    );
+})->in('Feature');
 
 /*
 |--------------------------------------------------------------------------
