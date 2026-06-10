@@ -140,3 +140,43 @@ it('always closes on the final forced round by sharing all leftovers', function 
     $grand = collect($result->allocations)->sum('total');
     expect(abs($grand - 399.74))->toBeLessThanOrEqual(0.02);
 });
+
+it('aggregates duplicate receipt lines with the same name', function () {
+    $items = [
+        ['name' => 'Heineken', 'quantity' => 2.0, 'unit_price' => 9.90, 'total_price' => 19.80, 'category' => 'drink'],
+        ['name' => 'Heineken', 'quantity' => 1.0, 'unit_price' => 9.90, 'total_price' => 9.90, 'category' => 'drink'],
+    ];
+    $participants = [['id' => 'a', 'name' => 'Ana'], ['id' => 'b', 'name' => 'Bia']];
+    $claims = [
+        ['participant_id' => 'a', 'items' => [['name' => 'Heineken', 'quantity' => 2.0]]],
+        ['participant_id' => 'b', 'items' => [['name' => 'Heineken', 'quantity' => 1.0]]],
+    ];
+
+    $result = (new BillReconciler)->reconcile(
+        items: $items,
+        participants: $participants,
+        claims: $claims,
+        foodShared: true,
+        serviceChargePercentage: 0.0,
+        total: 29.70,
+        forceFinal: false,
+    );
+
+    expect($result->needsInput())->toBeFalse();
+    $grand = collect($result->allocations)->sum('total');
+    expect(abs($grand - 29.70))->toBeLessThanOrEqual(0.01);
+});
+
+it('asks for participants when none submitted', function () {
+    $result = (new BillReconciler)->reconcile(
+        items: receiptFixture(),
+        participants: [],
+        claims: [],
+        foodShared: true,
+        serviceChargePercentage: 10.0,
+        total: 399.74,
+        forceFinal: true,
+    );
+
+    expect($result->needsInput())->toBeTrue();
+});

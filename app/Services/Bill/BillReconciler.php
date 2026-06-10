@@ -2,6 +2,7 @@
 
 namespace App\Services\Bill;
 
+use App\Enums\ItemCategory;
 use Illuminate\Support\Str;
 
 class BillReconciler
@@ -25,15 +26,39 @@ class BillReconciler
         float $total,
         bool $forceFinal,
     ): SplitResult {
+        if ($participants === []) {
+            return SplitResult::requestInput(
+                [$this->question('Nenhum participante enviou o que consumiu. Não é possível dividir a conta.')],
+                ['reason' => 'no_participants'],
+            );
+        }
+
         $catalog = [];
         foreach ($items as $item) {
             $key = $this->normalize($item['name']);
-            $catalog[$key] = [
-                'name' => $item['name'],
-                'unit_price' => (float) $item['unit_price'],
-                'category' => $item['category'],
-                'remaining' => (float) $item['quantity'],
-            ];
+            $qty = (float) $item['quantity'];
+            $lineValue = round($qty * (float) $item['unit_price'], 2);
+
+            if (isset($catalog[$key])) {
+                $catalog[$key]['remaining'] += $qty;
+                $catalog[$key]['total_qty'] += $qty;
+                $catalog[$key]['value'] += $lineValue;
+            } else {
+                $catalog[$key] = [
+                    'name' => $item['name'],
+                    'category' => $item['category'],
+                    'remaining' => $qty,
+                    'total_qty' => $qty,
+                    'value' => $lineValue,
+                ];
+            }
+        }
+
+        // Effective unit price per item (handles duplicate lines via a weighted value).
+        foreach ($catalog as $key => $entry) {
+            $catalog[$key]['unit_price'] = $entry['total_qty'] > 0
+                ? round($entry['value'] / $entry['total_qty'], 2)
+                : 0.0;
         }
 
         $consumed = [];
@@ -90,7 +115,7 @@ class BillReconciler
             }
 
             $value = round($left * $entry['unit_price'], 2);
-            $isFood = $entry['category'] === 'food';
+            $isFood = $entry['category'] === ItemCategory::Food->value;
 
             if ($forceFinal) {
                 $sharedFoodValue = round($sharedFoodValue + $value, 2);
@@ -160,10 +185,16 @@ class BillReconciler
             );
         }
 
-        return SplitResult::complete($allocations, [
+        $raw = [
             'shared_food_value' => $sharedFoodValue,
             'computed_total' => $running,
-        ]);
+        ];
+
+        if ($forceFinal && abs($drift) > self::TOLERANCE) {
+            $raw['large_drift'] = round($drift, 2);
+        }
+
+        return SplitResult::complete($allocations, $raw);
     }
 
     private function normalize(string $name): string
