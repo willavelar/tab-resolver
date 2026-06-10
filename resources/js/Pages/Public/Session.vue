@@ -85,6 +85,18 @@ const submit = () => {
             },
         });
 };
+
+const brl = (value) =>
+    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+        Number(value ?? 0),
+    );
+
+const foodItems = computed(() =>
+    (props.session.items ?? []).filter((i) => i.category === 'food'),
+);
+const drinkItems = computed(() =>
+    (props.session.items ?? []).filter((i) => i.category === 'drink'),
+);
 </script>
 
 <template>
