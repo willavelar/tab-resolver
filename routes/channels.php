@@ -8,3 +8,6 @@ Broadcast::channel('bill-session.{sessionId}', function ($user, string $sessionI
         ->where('user_id', $user->id)
         ->exists();
 });
+
+// Public channel: only signals "reload", carries no per-person data.
+Broadcast::channel('bill-session.{sessionId}.public', fn () => true);
