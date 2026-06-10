@@ -227,4 +227,5 @@ Pulse remains for Reverb monitoring and the broad observability overview.
 - **TypeScript**: not configured — plain JS with JSDoc if types are needed.
 - **Migrations**: always generate via `php artisan make:migration`. Never hand-edit existing migration files after they've been run.
 - **Form Requests**: validation belongs in `App\Http\Requests`, not inline in controllers.
+- **Commits**: commits can always be made directly on `main` — no need to branch first. Every feature or bug fix is a valid unit of work to commit (one commit per feature or per bug fix).
 - **Git authorship**: never add `Co-Authored-By: Claude` (or any AI model) to commit messages.
