@@ -48,9 +48,13 @@ class PublicSessionController extends Controller
                 'summary_markdown' => $session->status === ExtractionStatus::Completed
                     ? ReceiptSummary::for($session)
                     : null,
+                'analysis_status' => $session->analysis_status->value,
             ],
             'alreadySubmitted' => $existing !== null,
             'submittedName' => $existing?->name,
+            // Privacy: only this device's own participant breakdown is serialized.
+            'myBreakdown' => $existing?->breakdown,
+            'myAmountDue' => $existing?->amount_due,
         ]);
     }
 
