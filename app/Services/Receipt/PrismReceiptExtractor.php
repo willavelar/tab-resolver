@@ -41,7 +41,7 @@ class PrismReceiptExtractor implements ReceiptExtractor
                             new EnumSchema('type', 'choice para escolha entre opções, text para resposta livre', ['choice', 'text']),
                             new ArraySchema('options', 'Opções quando type = choice (senão vazio)', new StringSchema('option', 'Uma opção')),
                         ],
-                        requiredFields: ['id', 'prompt', 'type'],
+                        requiredFields: ['id', 'prompt', 'type', 'options'],
                     ),
                 ),
                 new ArraySchema(
@@ -65,7 +65,7 @@ class PrismReceiptExtractor implements ReceiptExtractor
                 new NumberSchema('service_charge_percentage', 'Percentual da gorjeta quando indicado (ex.: 10). Use 0 se não houver.'),
                 new NumberSchema('total', 'Total geral da conta'),
             ],
-            requiredFields: ['status', 'items', 'questions', 'subtotal', 'service_charge', 'total'],
+            requiredFields: ['status', 'questions', 'items', 'subtotal', 'service_charge', 'service_charge_percentage', 'total'],
         );
 
         $prompt = 'Leia esta conta de restaurante/bar. Para cada item informe nome, '
