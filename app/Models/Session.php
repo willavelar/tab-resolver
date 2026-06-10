@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\AnalysisStatus;
 use App\Enums\ExtractionStatus;
 use Database\Factories\SessionFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
@@ -31,6 +32,12 @@ class Session extends Model
         'clarifications',
         'processed_at',
         'failure_reason',
+        'food_shared',
+        'analysis_status',
+        'analysis_clarifications',
+        'analysis_result',
+        'analysis_failure_reason',
+        'analyzed_at',
     ];
 
     protected function casts(): array
@@ -44,6 +51,11 @@ class Session extends Model
             'raw_extraction' => 'array',
             'clarifications' => 'array',
             'processed_at' => 'datetime',
+            'food_shared' => 'boolean',
+            'analysis_status' => AnalysisStatus::class,
+            'analysis_clarifications' => 'array',
+            'analysis_result' => 'array',
+            'analyzed_at' => 'datetime',
         ];
     }
 

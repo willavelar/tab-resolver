@@ -22,12 +22,17 @@ class SessionParticipant extends Model
         'audio_duration',
         'ip_address',
         'user_agent',
+        'transcript',
+        'amount_due',
+        'breakdown',
     ];
 
     protected function casts(): array
     {
         return [
             'audio_duration' => 'integer',
+            'amount_due' => 'decimal:2',
+            'breakdown' => 'array',
         ];
     }
 
