@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\ExtractionStatus;
 use App\Events\ParticipantSubmitted;
 use App\Http\Requests\StorePublicParticipantRequest;
 use App\Models\Session;
 use App\Models\SessionParticipant;
+use App\Services\Receipt\ReceiptSummary;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cookie;
@@ -21,6 +23,8 @@ class PublicSessionController extends Controller
     {
         $session = Session::where('public_token', $token)->firstOrFail();
 
+        $session->load('items');
+
         $existing = $this->existingParticipant($request, $session);
 
         return Inertia::render('Public/Session', [
@@ -28,6 +32,22 @@ class PublicSessionController extends Controller
                 'title' => $session->title,
                 'image_url' => Storage::disk('public')->url($session->image_path),
                 'token' => $session->public_token,
+                'status' => $session->status->value,
+                'subtotal' => $session->subtotal,
+                'service_charge' => $session->service_charge,
+                'service_charge_percentage' => $session->service_charge_percentage,
+                'total' => $session->total,
+                'items' => $session->items->map(fn ($item) => [
+                    'id' => $item->id,
+                    'name' => $item->name,
+                    'quantity' => $item->quantity,
+                    'unit_price' => $item->unit_price,
+                    'total_price' => $item->total_price,
+                    'category' => $item->category?->value,
+                ]),
+                'summary_markdown' => $session->status === ExtractionStatus::Completed
+                    ? ReceiptSummary::for($session)
+                    : null,
             ],
             'alreadySubmitted' => $existing !== null,
             'submittedName' => $existing?->name,

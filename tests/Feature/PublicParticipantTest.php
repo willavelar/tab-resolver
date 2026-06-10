@@ -1,8 +1,11 @@
 <?php
 
+use App\Enums\ExtractionStatus;
+use App\Enums\ItemCategory;
 use App\Events\ParticipantSubmitted;
 use App\Http\Requests\StorePublicParticipantRequest;
 use App\Models\Session;
+use App\Models\SessionItem;
 use App\Models\SessionParticipant;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
@@ -227,4 +230,48 @@ test('a device that already submitted cannot submit again', function () {
 
     expect(SessionParticipant::count())->toBe(1);
     Event::assertNotDispatched(ParticipantSubmitted::class);
+});
+
+test('the public page exposes items, totals and summary when extraction is completed', function () {
+    $session = Session::factory()->for(User::factory())->create([
+        'status' => ExtractionStatus::Completed,
+        'subtotal' => 50,
+        'service_charge' => 5,
+        'service_charge_percentage' => 10,
+        'total' => 55,
+    ]);
+    SessionItem::create([
+        'bill_session_id' => $session->id,
+        'name' => 'Heineken',
+        'quantity' => 1,
+        'unit_price' => 9.90,
+        'total_price' => 9.90,
+        'category' => ItemCategory::Drink,
+        'position' => 1,
+    ]);
+
+    $this->get("/c/{$session->public_token}")
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('session.status', 'completed')
+            ->where('session.items.0.name', 'Heineken')
+            ->where('session.items.0.category', 'drink')
+            ->where('session.total', fn ($v) => (float) $v === 55.0)
+            ->where('session.summary_markdown', fn ($v) => str_contains((string) $v, '## Bebida'))
+        );
+});
+
+test('the public page has no items or summary when extraction is not completed', function () {
+    $session = Session::factory()->for(User::factory())->create([
+        'status' => ExtractionStatus::Pending,
+    ]);
+
+    $this->get("/c/{$session->public_token}")
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('session.status', 'pending')
+            ->where('session.items', [])
+            ->where('session.summary_markdown', null)
+            ->has('session.image_url')
+        );
 });
