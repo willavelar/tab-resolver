@@ -76,6 +76,52 @@ const copySummary = async () => {
     }
 };
 
+// --- Bill analysis (split calculation) ---
+const analyzeForm = useForm({});
+const analysisClarifyForm = useForm({ answers: {} });
+
+const canAnalyze = computed(
+    () =>
+        props.session.status === 'completed' &&
+        participants.value.length >= 1 &&
+        !['processing', 'needs_clarification'].includes(props.session.analysis_status),
+);
+
+const allAnalysisAnswered = computed(() =>
+    (props.session.analysis_clarifications?.pending ?? []).every(
+        (q) => `${analysisClarifyForm.answers[q.id] ?? ''}`.trim() !== '',
+    ),
+);
+
+const analysisParticipants = computed(
+    () => props.session.analysis_result?.participants ?? [],
+);
+
+const analysisGrandTotal = computed(() =>
+    analysisParticipants.value.reduce((sum, p) => sum + Number(p.total ?? 0), 0),
+);
+
+const toggleFoodShared = () => {
+    router.patch(
+        route('sessions.food-shared', props.session.id),
+        { food_shared: !props.session.food_shared },
+        { preserveScroll: true },
+    );
+};
+
+const runAnalysis = () => {
+    analyzeForm.post(route('sessions.analyze', props.session.id), {
+        preserveScroll: true,
+    });
+};
+
+const submitAnalysisClarification = () => {
+    analysisClarifyForm.post(route('sessions.analyze.clarify', props.session.id), {
+        preserveScroll: true,
+        onSuccess: () => analysisClarifyForm.reset(),
+    });
+};
+
 let channel = null;
 
 const channelName = `bill-session.${props.session.id}`;
@@ -86,6 +132,9 @@ const subscribe = () => {
     }
     channel = window.Echo.private(channelName);
     channel.listen('.extraction.updated', () => {
+        router.reload({ only: ['session'] });
+    });
+    channel.listen('.analysis.updated', () => {
         router.reload({ only: ['session'] });
     });
     channel.listen('.participant.submitted', (payload) => {
@@ -376,6 +425,143 @@ onBeforeUnmount(() => {
                                     </button>
                                 </div>
                                 <pre class="mt-2 whitespace-pre-wrap rounded-md border border-hairline bg-surface-strong p-4 text-sm text-body">{{ session.summary_markdown }}</pre>
+                            </div>
+
+                            <!-- Bill analysis -->
+                            <div class="mt-8 border-t border-hairline pt-6">
+                                <div class="flex items-center justify-between gap-3">
+                                    <h3 class="text-sm font-semibold text-ink">Análise da conta</h3>
+
+                                    <label class="flex cursor-pointer items-center gap-2 text-sm text-body">
+                                        <input
+                                            type="checkbox"
+                                            class="rounded border-hairline-strong text-primary focus:ring-primary"
+                                            :checked="session.food_shared"
+                                            :disabled="session.analysis_status === 'processing'"
+                                            @change="toggleFoodShared"
+                                        />
+                                        Comida compartilhada
+                                    </label>
+                                </div>
+
+                                <p class="mt-1 text-xs text-muted">
+                                    Comida não reivindicada é dividida igualmente; bebidas são sempre individuais.
+                                </p>
+
+                                <!-- trigger -->
+                                <div
+                                    v-if="['pending', 'failed'].includes(session.analysis_status)"
+                                    class="mt-4"
+                                >
+                                    <button
+                                        type="button"
+                                        class="inline-flex items-center justify-center gap-1.5 rounded-md border border-transparent bg-primary px-[18px] py-2.5 text-sm font-medium text-on-primary transition-colors duration-150 hover:bg-primary-active focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-canvas disabled:opacity-50"
+                                        :disabled="!canAnalyze || analyzeForm.processing"
+                                        @click="runAnalysis"
+                                    >
+                                        🧮 Analisar conta
+                                    </button>
+                                    <p v-if="session.analysis_failure_reason" class="mt-2 text-sm text-error">
+                                        {{ session.analysis_failure_reason }}
+                                    </p>
+                                    <p v-if="participants.length < 1" class="mt-2 text-sm text-muted">
+                                        Aguardando ao menos um participante enviar o que consumiu.
+                                    </p>
+                                </div>
+
+                                <!-- processing -->
+                                <div
+                                    v-else-if="session.analysis_status === 'processing'"
+                                    class="mt-4 flex items-center justify-center gap-3 rounded-md border border-hairline bg-surface-strong p-4"
+                                >
+                                    <svg class="h-5 w-5 animate-spin text-primary" viewBox="0 0 24 24" fill="none">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                    </svg>
+                                    <p class="text-sm text-body">Analisando a conta...</p>
+                                </div>
+
+                                <!-- needs clarification -->
+                                <div
+                                    v-else-if="session.analysis_status === 'needs_clarification'"
+                                    class="mt-4 rounded-md border border-hairline bg-surface-strong p-4"
+                                >
+                                    <p class="text-sm font-medium text-ink">Precisamos de algumas respostas</p>
+                                    <p class="mt-1 text-xs text-muted">Responda para fechar a divisão da conta.</p>
+
+                                    <form class="mt-4 space-y-4" @submit.prevent="submitAnalysisClarification">
+                                        <div
+                                            v-for="question in (session.analysis_clarifications?.pending ?? [])"
+                                            :key="question.id"
+                                        >
+                                            <p class="text-sm text-body">{{ question.prompt }}</p>
+
+                                            <div v-if="question.type === 'choice'" class="mt-2 flex flex-wrap gap-2">
+                                                <button
+                                                    v-for="option in question.options"
+                                                    :key="option"
+                                                    type="button"
+                                                    class="rounded-md border px-3 py-1.5 text-sm transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-primary"
+                                                    :class="analysisClarifyForm.answers[question.id] === option
+                                                        ? 'border-primary bg-primary text-on-primary'
+                                                        : 'border-hairline-strong bg-surface-card text-ink hover:bg-canvas-soft'"
+                                                    @click="analysisClarifyForm.answers[question.id] = option"
+                                                >
+                                                    {{ option }}
+                                                </button>
+                                            </div>
+
+                                            <input
+                                                v-else
+                                                v-model="analysisClarifyForm.answers[question.id]"
+                                                type="text"
+                                                class="mt-2 block w-full rounded-md border border-hairline bg-surface-card px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary"
+                                                placeholder="Sua resposta"
+                                            />
+                                        </div>
+
+                                        <button
+                                            type="submit"
+                                            class="inline-flex items-center justify-center gap-1.5 rounded-md border border-transparent bg-primary px-[18px] py-2.5 text-sm font-medium text-on-primary transition-colors duration-150 hover:bg-primary-active focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-canvas disabled:opacity-50"
+                                            :disabled="analysisClarifyForm.processing || !allAnalysisAnswered"
+                                        >
+                                            Enviar respostas
+                                        </button>
+                                    </form>
+                                </div>
+
+                                <!-- completed -->
+                                <div
+                                    v-else-if="session.analysis_status === 'completed'"
+                                    class="mt-4 space-y-3"
+                                >
+                                    <div
+                                        v-for="person in analysisParticipants"
+                                        :key="person.participant_id"
+                                        class="rounded-md border border-hairline bg-surface-strong p-4"
+                                    >
+                                        <div class="flex items-center justify-between gap-2">
+                                            <span class="text-sm font-semibold text-ink">{{ person.name }}</span>
+                                            <span class="text-sm font-semibold text-ink">{{ brl(person.total) }}</span>
+                                        </div>
+                                        <ul class="mt-2 space-y-1 text-sm text-body">
+                                            <li v-for="(item, idx) in (person.items ?? [])" :key="idx">
+                                                {{ Number(item.quantity) }}x {{ item.name }} — {{ brl(item.total_price) }}
+                                            </li>
+                                            <li v-if="Number(person.shared_food_share) > 0">
+                                                Parte da comida compartilhada — {{ brl(person.shared_food_share) }}
+                                            </li>
+                                        </ul>
+                                        <div class="mt-2 text-xs text-muted">
+                                            Subtotal {{ brl(person.subtotal) }} · Gorjeta {{ brl(person.tip) }}
+                                        </div>
+                                    </div>
+
+                                    <div class="flex items-center justify-between border-t border-hairline pt-3">
+                                        <span class="text-sm font-semibold text-ink">Total</span>
+                                        <span class="text-sm font-semibold text-ink">{{ brl(analysisGrandTotal) }}</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
