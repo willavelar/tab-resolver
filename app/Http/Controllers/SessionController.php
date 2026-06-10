@@ -4,10 +4,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\AnalysisStatus;
 use App\Enums\ExtractionStatus;
+use App\Events\ReceiptAnalysisUpdated;
 use App\Events\ReceiptExtractionUpdated;
+use App\Http\Requests\ClarifyAnalysisRequest;
 use App\Http\Requests\ClarifyExtractionRequest;
 use App\Http\Requests\StoreSessionRequest;
+use App\Http\Requests\UpdateFoodSharedRequest;
+use App\Jobs\AnalyzeBill;
 use App\Jobs\ExtractReceiptItems;
 use App\Models\Session;
 use App\Services\Receipt\ReceiptSummary;
@@ -155,6 +160,138 @@ class SessionController extends Controller
         return redirect()->route('sessions.show', $session);
     }
 
+    public function updateFoodShared(UpdateFoodSharedRequest $request, Session $session): RedirectResponse
+    {
+        if ($session->user_id !== auth()->id()) {
+            abort(403);
+        }
+
+        if ($session->analysis_status === AnalysisStatus::Processing) {
+            abort(403);
+        }
+
+        $session->update(['food_shared' => $request->validated('food_shared')]);
+
+        return back();
+    }
+
+    public function analyze(Session $session): RedirectResponse
+    {
+        Log::info('[Controller][SessionController][analyze] Inicio da execusão.', [
+            'session_id' => $session->id,
+            'analysis_status' => $session->analysis_status->value,
+        ]);
+
+        if ($session->user_id !== auth()->id()) {
+            Log::warning('[Controller][SessionController][analyze] Acesso negado: usuário não é dono da sessão.', [
+                'session_id' => $session->id,
+                'user_id' => auth()->id(),
+            ]);
+            abort(403);
+        }
+
+        if ($session->status !== ExtractionStatus::Completed) {
+            Log::warning('[Controller][SessionController][analyze] Análise bloqueada: extração do recibo ainda não concluída.', [
+                'session_id' => $session->id,
+                'status' => $session->status->value,
+            ]);
+            abort(403);
+        }
+
+        if ($session->participants()->count() < 1) {
+            Log::warning('[Controller][SessionController][analyze] Análise bloqueada: nenhum participante enviou dados.', [
+                'session_id' => $session->id,
+            ]);
+            abort(403);
+        }
+
+        $blocked = [AnalysisStatus::Processing, AnalysisStatus::NeedsClarification];
+        if (in_array($session->analysis_status, $blocked, true)) {
+            Log::warning('[Controller][SessionController][analyze] Análise bloqueada: status atual não permite reprocessar.', [
+                'session_id' => $session->id,
+                'analysis_status' => $session->analysis_status->value,
+            ]);
+            abort(403);
+        }
+
+        $session->update([
+            'analysis_status' => AnalysisStatus::Processing,
+            'analysis_result' => null,
+            'analysis_clarifications' => null,
+            'analysis_failure_reason' => null,
+        ]);
+
+        event(new ReceiptAnalysisUpdated($session->id, AnalysisStatus::Processing->value));
+
+        AnalyzeBill::dispatch($session);
+
+        Log::info('[Controller][SessionController][analyze] Job de análise despachado. Fim da execusão.', [
+            'session_id' => $session->id,
+        ]);
+
+        return redirect()->route('sessions.show', $session);
+    }
+
+    public function clarifyAnalysis(ClarifyAnalysisRequest $request, Session $session): RedirectResponse
+    {
+        Log::info('[Controller][SessionController][clarifyAnalysis] Inicio da execusão.', [
+            'session_id' => $session->id,
+            'analysis_status' => $session->analysis_status->value,
+        ]);
+
+        if ($session->user_id !== auth()->id()) {
+            Log::warning('[Controller][SessionController][clarifyAnalysis] Acesso negado: usuário não é dono da sessão.', [
+                'session_id' => $session->id,
+                'user_id' => auth()->id(),
+            ]);
+            abort(403);
+        }
+
+        if ($session->analysis_status !== AnalysisStatus::NeedsClarification) {
+            Log::warning('[Controller][SessionController][clarifyAnalysis] Esclarecimento ignorado: análise não aguarda respostas.', [
+                'session_id' => $session->id,
+                'analysis_status' => $session->analysis_status->value,
+            ]);
+            abort(403);
+        }
+
+        $clarifications = $session->analysis_clarifications ?? [];
+        $answered = $clarifications['answered'] ?? [];
+        $answers = $request->validated('answers');
+
+        foreach ($clarifications['pending'] ?? [] as $question) {
+            if (! array_key_exists($question['id'], $answers)) {
+                continue;
+            }
+
+            $answered[] = [
+                'question' => $question['prompt'],
+                'answer' => $answers[$question['id']],
+            ];
+        }
+
+        $session->update([
+            'analysis_status' => AnalysisStatus::Processing,
+            'analysis_clarifications' => [
+                'round' => ($clarifications['round'] ?? 0) + 1,
+                'answered' => $answered,
+                'pending' => [],
+            ],
+        ]);
+
+        event(new ReceiptAnalysisUpdated($session->id, AnalysisStatus::Processing->value));
+
+        AnalyzeBill::dispatch($session);
+
+        Log::info('[Controller][SessionController][clarifyAnalysis] Respostas registradas e job redespachado. Fim da execusão.', [
+            'session_id' => $session->id,
+            'respostas_recebidas' => count($answered),
+            'round' => ($clarifications['round'] ?? 0) + 1,
+        ]);
+
+        return redirect()->route('sessions.show', $session);
+    }
+
     public function show(Session $session): Response
     {
         abort_unless($session->user_id === auth()->id(), 403);
@@ -174,6 +311,11 @@ class SessionController extends Controller
                 'total' => $session->total,
                 'service_charge_percentage' => $session->service_charge_percentage,
                 'clarifications' => $session->clarifications,
+                'food_shared' => $session->food_shared,
+                'analysis_status' => $session->analysis_status->value,
+                'analysis_clarifications' => $session->analysis_clarifications,
+                'analysis_result' => $session->analysis_result,
+                'analysis_failure_reason' => $session->analysis_failure_reason,
                 'summary_markdown' => $session->status === ExtractionStatus::Completed
                     ? ReceiptSummary::for($session)
                     : null,

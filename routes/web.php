@@ -32,6 +32,15 @@ Route::middleware('auth')->group(function () {
     Route::post('/sessions/{session}/clarify', [SessionController::class, 'clarify'])
         ->name('sessions.clarify');
 
+    Route::post('/sessions/{session}/analyze', [SessionController::class, 'analyze'])
+        ->name('sessions.analyze');
+
+    Route::post('/sessions/{session}/analyze/clarify', [SessionController::class, 'clarifyAnalysis'])
+        ->name('sessions.analyze.clarify');
+
+    Route::patch('/sessions/{session}/food-shared', [SessionController::class, 'updateFoodShared'])
+        ->name('sessions.food-shared');
+
     Route::get('/sessions/{session}', [SessionController::class, 'show'])
         ->name('sessions.show');
 
