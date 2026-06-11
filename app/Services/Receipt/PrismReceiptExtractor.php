@@ -55,7 +55,7 @@ class PrismReceiptExtractor implements ReceiptExtractor
                             new NumberSchema('quantity', 'Quantidade do item'),
                             new NumberSchema('unit_price', 'Preço unitário do item'),
                             new NumberSchema('total_price', 'Preço total da linha (quantidade x unitário)'),
-                            new EnumSchema('category', 'food para comida, drink para bebida', ['food', 'drink']),
+                            new EnumSchema('category', 'food para comida, drink para bebida, other para itens não consumíveis (ex.: estacionamento, couvert, taxas)', ['food', 'drink', 'other']),
                         ],
                         requiredFields: ['name', 'quantity', 'unit_price', 'total_price', 'category'],
                     ),
@@ -101,7 +101,7 @@ class PrismReceiptExtractor implements ReceiptExtractor
                 'quantity' => (float) ($item['quantity'] ?? 0),
                 'unit_price' => (float) ($item['unit_price'] ?? 0),
                 'total_price' => (float) ($item['total_price'] ?? 0),
-                'category' => in_array($item['category'] ?? null, ['food', 'drink'], true) ? $item['category'] : 'food',
+                'category' => in_array($item['category'] ?? null, ['food', 'drink', 'other'], true) ? $item['category'] : 'food',
             ], $data['items'] ?? []);
 
             Log::info('[Service][PrismReceiptExtractor][extract] Modelo retornou perguntas de esclarecimento. Fim da execusão.', [
@@ -124,7 +124,7 @@ class PrismReceiptExtractor implements ReceiptExtractor
             'quantity' => (float) $item['quantity'],
             'unit_price' => (float) $item['unit_price'],
             'total_price' => (float) $item['total_price'],
-            'category' => in_array($item['category'] ?? null, ['food', 'drink'], true) ? $item['category'] : 'food',
+            'category' => in_array($item['category'] ?? null, ['food', 'drink', 'other'], true) ? $item['category'] : 'food',
         ], $data['items'] ?? []);
 
         $percentage = (float) ($data['service_charge_percentage'] ?? 0);
@@ -155,7 +155,8 @@ class PrismReceiptExtractor implements ReceiptExtractor
     {
         $prompt = 'Leia esta conta de restaurante/bar. Para cada item informe nome, '
             .'quantidade, preço unitário, preço total e a categoria (food para comida, '
-            .'drink para bebida). Informe também subtotal e total. Use números (sem '
+            .'drink para bebida, other para itens não consumíveis como estacionamento, '
+            .'couvert ou taxas). Informe também subtotal e total. Use números (sem '
             .'símbolo de moeda). '
             .'GORJETA / TAXA DE SERVIÇO: ela só existe se estiver IMPRESSA como uma linha '
             .'na conta (pode aparecer como "Serviço", "Taxa de serviço", "Serv." ou '

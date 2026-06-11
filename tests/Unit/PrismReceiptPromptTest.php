@@ -31,3 +31,11 @@ it('appends answered clarifications and the final-round instruction to the promp
         ->toContain('Qual a categoria da água? => drink')
         ->toContain('rodada final');
 });
+
+it('tells the model about the outros category for non-consumables', function () {
+    $prompt = (new PrismReceiptExtractor)->buildPrompt();
+
+    expect($prompt)
+        ->toContain('other')
+        ->toContain('estacionamento');
+});
