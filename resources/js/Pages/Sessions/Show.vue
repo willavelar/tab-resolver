@@ -90,6 +90,10 @@ const analysisGrandTotal = computed(() =>
     analysisParticipants.value.reduce((sum, p) => sum + Number(p.total ?? 0), 0),
 );
 
+const hasOtherItems = computed(() =>
+    (props.session.items ?? []).some((i) => i.category === 'other'),
+);
+
 const setFoodShared = (value) => {
     if (value === props.session.food_shared) {
         return;
@@ -98,6 +102,18 @@ const setFoodShared = (value) => {
     router.patch(
         route('sessions.food-shared', props.session.id),
         { food_shared: value },
+        { preserveScroll: true },
+    );
+};
+
+const setOthersShared = (value) => {
+    if (value === props.session.others_shared) {
+        return;
+    }
+
+    router.patch(
+        route('sessions.others-shared', props.session.id),
+        { others_shared: value },
         { preserveScroll: true },
     );
 };
@@ -516,8 +532,40 @@ onBeforeUnmount(() => {
                                     </button>
                                 </div>
 
+                                <div
+                                    v-if="hasOtherItems"
+                                    class="mt-3 flex w-full rounded-md border border-hairline bg-surface-strong p-1"
+                                >
+                                    <button
+                                        type="button"
+                                        class="flex-1 rounded px-3 py-2.5 text-sm font-medium transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
+                                        :class="
+                                            session.others_shared
+                                                ? 'bg-surface-card text-ink shadow-sm'
+                                                : 'text-muted hover:text-body'
+                                        "
+                                        :disabled="session.analysis_status === 'processing'"
+                                        @click="setOthersShared(true)"
+                                    >
+                                        Outros compartilhados
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="flex-1 rounded px-3 py-2.5 text-sm font-medium transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
+                                        :class="
+                                            !session.others_shared
+                                                ? 'bg-surface-card text-ink shadow-sm'
+                                                : 'text-muted hover:text-body'
+                                        "
+                                        :disabled="session.analysis_status === 'processing'"
+                                        @click="setOthersShared(false)"
+                                    >
+                                        Outros não compartilhados
+                                    </button>
+                                </div>
+
                                 <p class="mt-2 text-xs text-muted">
-                                    Comida não reivindicada é dividida igualmente; bebidas são sempre individuais.
+                                    Comida não reivindicada é dividida igualmente; bebidas são sempre individuais. Itens em "outros" (ex.: estacionamento) seguem a mesma regra quando marcados como compartilhados.
                                 </p>
 
                                 <!-- trigger -->
