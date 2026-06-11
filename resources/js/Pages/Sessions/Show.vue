@@ -64,6 +64,9 @@ const foodItems = computed(() =>
 const drinkItems = computed(() =>
     (props.session.items ?? []).filter((i) => i.category === 'drink'),
 );
+const otherItems = computed(() =>
+    (props.session.items ?? []).filter((i) => i.category === 'other'),
+);
 
 // --- Bill analysis (split calculation) ---
 const analyzeForm = useForm({});
@@ -442,6 +445,7 @@ onBeforeUnmount(() => {
                                 v-for="group in [
                                     { title: 'Comida', items: foodItems },
                                     { title: 'Bebida', items: drinkItems },
+                                    { title: 'Outros', items: otherItems },
                                 ]"
                                 :key="group.title"
                             >
@@ -691,7 +695,7 @@ onBeforeUnmount(() => {
                                                 {{ Number(item.quantity) }}x {{ item.name }} — {{ brl(item.total_price) }}
                                             </li>
                                             <li v-if="Number(person.shared_food_share) > 0">
-                                                Parte da comida compartilhada — {{ brl(person.shared_food_share) }}
+                                                Parte dos itens compartilhados — {{ brl(person.shared_food_share) }}
                                             </li>
                                         </ul>
                                         <div class="mt-2 text-xs text-muted">
