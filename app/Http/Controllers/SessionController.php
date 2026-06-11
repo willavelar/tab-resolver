@@ -12,6 +12,7 @@ use App\Http\Requests\ClarifyAnalysisRequest;
 use App\Http\Requests\ClarifyExtractionRequest;
 use App\Http\Requests\StoreSessionRequest;
 use App\Http\Requests\UpdateFoodSharedRequest;
+use App\Http\Requests\UpdateOthersSharedRequest;
 use App\Jobs\AnalyzeBill;
 use App\Jobs\ExtractReceiptItems;
 use App\Models\Session;
@@ -226,6 +227,21 @@ class SessionController extends Controller
         return back();
     }
 
+    public function updateOthersShared(UpdateOthersSharedRequest $request, Session $session): RedirectResponse
+    {
+        if ($session->user_id !== auth()->id()) {
+            abort(403);
+        }
+
+        if ($session->analysis_status === AnalysisStatus::Processing) {
+            abort(403);
+        }
+
+        $session->update(['others_shared' => $request->validated('others_shared')]);
+
+        return back();
+    }
+
     public function analyze(Session $session): RedirectResponse
     {
         Log::info('[Controller][SessionController][analyze] Inicio da execusão.', [
@@ -396,6 +412,7 @@ class SessionController extends Controller
                 'service_charge_percentage' => $session->service_charge_percentage,
                 'clarifications' => $session->clarifications,
                 'food_shared' => $session->food_shared,
+                'others_shared' => $session->others_shared,
                 'analysis_status' => $session->analysis_status->value,
                 'analysis_clarifications' => $session->analysis_clarifications,
                 'analysis_result' => $session->analysis_result,

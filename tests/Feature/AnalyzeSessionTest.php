@@ -90,3 +90,22 @@ it('records analysis clarification answers and re-dispatches', function () {
 
     Queue::assertPushed(AnalyzeBill::class);
 });
+
+it('lets the owner toggle others_shared', function () {
+    $user = User::factory()->create();
+    $session = Session::factory()->for($user)->create(['others_shared' => false]);
+
+    $this->actingAs($user)
+        ->patch(route('sessions.others-shared', $session), ['others_shared' => true])
+        ->assertRedirect();
+
+    expect($session->fresh()->others_shared)->toBeTrue();
+});
+
+it('forbids a non-owner from toggling others_shared', function () {
+    $session = Session::factory()->for(User::factory())->create();
+
+    $this->actingAs(User::factory()->create())
+        ->patch(route('sessions.others-shared', $session), ['others_shared' => true])
+        ->assertForbidden();
+});

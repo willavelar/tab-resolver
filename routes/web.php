@@ -46,6 +46,9 @@ Route::middleware('auth')->group(function () {
     Route::patch('/sessions/{session}/food-shared', [SessionController::class, 'updateFoodShared'])
         ->name('sessions.food-shared');
 
+    Route::patch('/sessions/{session}/others-shared', [SessionController::class, 'updateOthersShared'])
+        ->name('sessions.others-shared');
+
     Route::get('/sessions/{session}', [SessionController::class, 'show'])
         ->name('sessions.show');
 
