@@ -61,35 +61,14 @@ class PrismReceiptExtractor implements ReceiptExtractor
                     ),
                 ),
                 new NumberSchema('subtotal', 'Subtotal dos itens, sem taxa'),
-                new NumberSchema('service_charge', 'Taxa de serviço / gorjeta (valor absoluto)'),
-                new NumberSchema('service_charge_percentage', 'Percentual da gorjeta quando indicado (ex.: 10). Use 0 se não houver.'),
+                new NumberSchema('service_charge', 'Taxa de serviço / gorjeta SOMENTE se impressa na conta (valor absoluto). Use 0 se a linha não existir — nunca assuma os 10% habituais.'),
+                new NumberSchema('service_charge_percentage', 'Percentual da gorjeta apenas quando impresso na conta. Use 0 se não houver linha de serviço — não invente 10%.'),
                 new NumberSchema('total', 'Total geral da conta'),
             ],
             requiredFields: ['status', 'questions', 'items', 'subtotal', 'service_charge', 'service_charge_percentage', 'total'],
         );
 
-        $prompt = 'Leia esta conta de restaurante/bar. Para cada item informe nome, '
-            .'quantidade, preço unitário, preço total e a categoria (food para comida, '
-            .'drink para bebida). Informe também subtotal, taxa de serviço (valor e '
-            .'percentual quando indicado) e total. Use números (sem símbolo de moeda). '
-            .'Se a taxa de serviço não existir, use 0. NÃO ADIVINHE: se tiver qualquer '
-            .'dúvida sobre a categoria de um item ou não conseguir ler um valor, retorne '
-            .'status "needs_input" com perguntas objetivas em "questions" (uma por dúvida). '
-            .'MESMO ao perguntar, preencha "items", subtotal, taxa e total com tudo o que '
-            .'você JÁ leu com confiança (parcial) — isso serve para mostrar ao usuário o que '
-            .'você já entendeu, mas NÃO substitui as perguntas. Caso contrário, status "complete".';
-
-        if ($answered !== []) {
-            $prompt .= "\n\nO usuário já respondeu às seguintes dúvidas — use estas respostas:\n";
-            foreach ($answered as $qa) {
-                $prompt .= '- '.$qa['question'].' => '.$qa['answer']."\n";
-            }
-        }
-
-        if ($forceFinal) {
-            $prompt .= "\n\nEsta é a rodada final: NÃO faça mais perguntas. Use seu melhor "
-                .'julgamento e retorne status "complete" com todos os itens classificados.';
-        }
+        $prompt = $this->buildPrompt($answered, $forceFinal);
 
         $message = new UserMessage($prompt, [Image::fromLocalPath(path: $absoluteImagePath)]);
 
@@ -164,6 +143,46 @@ class PrismReceiptExtractor implements ReceiptExtractor
             total: (float) ($data['total'] ?? 0),
             raw: $data,
         );
+    }
+
+    /**
+     * Monta o prompt enviado ao modelo. Extraído para um método puro para que o
+     * guarda-corpo da gorjeta (não inventar os 10% habituais) seja testável.
+     *
+     * @param  array<int, array{question: string, answer: string}>  $answered
+     */
+    public function buildPrompt(array $answered = [], bool $forceFinal = false): string
+    {
+        $prompt = 'Leia esta conta de restaurante/bar. Para cada item informe nome, '
+            .'quantidade, preço unitário, preço total e a categoria (food para comida, '
+            .'drink para bebida). Informe também subtotal e total. Use números (sem '
+            .'símbolo de moeda). '
+            .'GORJETA / TAXA DE SERVIÇO: ela só existe se estiver IMPRESSA como uma linha '
+            .'na conta (pode aparecer como "Serviço", "Taxa de serviço", "Serv." ou '
+            .'"Gorjeta"). NUNCA assuma os 10% habituais nem invente uma gorjeta que não '
+            .'esteja escrita no recibo. Se essa linha NÃO existir, use 0 em service_charge '
+            .'e em service_charge_percentage. Quando existir, informe o valor e o '
+            .'percentual exatamente como impressos. '
+            .'NÃO ADIVINHE: se tiver qualquer '
+            .'dúvida sobre a categoria de um item ou não conseguir ler um valor, retorne '
+            .'status "needs_input" com perguntas objetivas em "questions" (uma por dúvida). '
+            .'MESMO ao perguntar, preencha "items", subtotal, taxa e total com tudo o que '
+            .'você JÁ leu com confiança (parcial) — isso serve para mostrar ao usuário o que '
+            .'você já entendeu, mas NÃO substitui as perguntas. Caso contrário, status "complete".';
+
+        if ($answered !== []) {
+            $prompt .= "\n\nO usuário já respondeu às seguintes dúvidas — use estas respostas:\n";
+            foreach ($answered as $qa) {
+                $prompt .= '- '.$qa['question'].' => '.$qa['answer']."\n";
+            }
+        }
+
+        if ($forceFinal) {
+            $prompt .= "\n\nEsta é a rodada final: NÃO faça mais perguntas. Use seu melhor "
+                .'julgamento e retorne status "complete" com todos os itens classificados.';
+        }
+
+        return $prompt;
     }
 
     /**
