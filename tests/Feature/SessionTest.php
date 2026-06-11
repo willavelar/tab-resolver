@@ -168,3 +168,9 @@ test('dashboard does not show sessions owned by other users', function () {
             ->has('sessions', 0)
         );
 });
+
+it('defaults others_shared to false and casts it to boolean', function () {
+    $session = Session::factory()->for(User::factory())->create();
+
+    expect($session->fresh()->others_shared)->toBeFalse();
+});
