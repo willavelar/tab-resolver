@@ -2,7 +2,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 const props = defineProps({
     session: {
@@ -115,6 +115,54 @@ const submitAnalysisClarification = () => {
     });
 };
 
+// --- Watchdog: rescues a session orphaned in "processing" when the queue dies
+// without ever broadcasting a result (worker killed, OOM, queue down). Each
+// threshold sits just above the matching job's server-side $timeout, so a
+// slow-but-healthy run is never flagged. On firing we POST a timeout endpoint
+// that flips the stuck status to "failed" and re-broadcasts, reusing the existing
+// failed UI + retry button.
+const EXTRACTION_TIMEOUT_MS = 150_000; // job $timeout is 120s
+const ANALYSIS_TIMEOUT_MS = 210_000; // job $timeout is 180s
+
+let extractionWatchdog = null;
+let analysisWatchdog = null;
+
+const armWatchdog = (status, timer, ms, routeName) => {
+    clearTimeout(timer);
+    if (status !== 'processing') {
+        return null;
+    }
+    return setTimeout(() => {
+        router.post(route(routeName, props.session.id), {}, { preserveScroll: true });
+    }, ms);
+};
+
+watch(
+    () => props.session.status,
+    (status) => {
+        extractionWatchdog = armWatchdog(
+            status,
+            extractionWatchdog,
+            EXTRACTION_TIMEOUT_MS,
+            'sessions.extract.timeout',
+        );
+    },
+    { immediate: true },
+);
+
+watch(
+    () => props.session.analysis_status,
+    (status) => {
+        analysisWatchdog = armWatchdog(
+            status,
+            analysisWatchdog,
+            ANALYSIS_TIMEOUT_MS,
+            'sessions.analyze.timeout',
+        );
+    },
+    { immediate: true },
+);
+
 let channel = null;
 
 const channelName = `bill-session.${props.session.id}`;
@@ -142,6 +190,8 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+    clearTimeout(extractionWatchdog);
+    clearTimeout(analysisWatchdog);
     if (channel) {
         window.Echo.leave(channelName);
         channel = null;

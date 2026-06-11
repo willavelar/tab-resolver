@@ -117,6 +117,40 @@ class SessionController extends Controller
         return redirect()->route('sessions.show', $session);
     }
 
+    /**
+     * Rescue a session orphaned in "processing" when the queue dies without ever
+     * running the job's failed() (worker killed, SIGKILL/OOM, queue down). Called
+     * by the frontend watchdog once it has waited longer than the job could
+     * reasonably take. Idempotent: only acts while still processing.
+     */
+    public function markExtractionTimedOut(Session $session): RedirectResponse
+    {
+        if ($session->user_id !== auth()->id()) {
+            Log::warning('[Controller][SessionController][markExtractionTimedOut] Acesso negado: usuário não é dono da sessão.', [
+                'session_id' => $session->id,
+                'user_id' => auth()->id(),
+            ]);
+            abort(403);
+        }
+
+        if ($session->status === ExtractionStatus::Processing) {
+            $reason = 'O processamento demorou demais e não pôde ser concluído. Tente novamente.';
+
+            $session->update([
+                'status' => ExtractionStatus::Failed,
+                'failure_reason' => $reason,
+            ]);
+
+            event(new ReceiptExtractionUpdated($session->id, ExtractionStatus::Failed->value, $reason));
+
+            Log::warning('[Controller][SessionController][markExtractionTimedOut] Sessão presa em processamento marcada como falha.', [
+                'session_id' => $session->id,
+            ]);
+        }
+
+        return redirect()->route('sessions.show', $session);
+    }
+
     public function clarify(ClarifyExtractionRequest $request, Session $session): RedirectResponse
     {
         Log::info('[Controller][SessionController][clarify] Inicio da execusão.', [
@@ -245,6 +279,39 @@ class SessionController extends Controller
         Log::info('[Controller][SessionController][analyze] Job de análise despachado. Fim da execusão.', [
             'session_id' => $session->id,
         ]);
+
+        return redirect()->route('sessions.show', $session);
+    }
+
+    /**
+     * Rescue an analysis orphaned in "processing" when the queue dies without ever
+     * running the job's failed(). Mirror of markExtractionTimedOut for the split
+     * step. Idempotent: only acts while still processing.
+     */
+    public function markAnalysisTimedOut(Session $session): RedirectResponse
+    {
+        if ($session->user_id !== auth()->id()) {
+            Log::warning('[Controller][SessionController][markAnalysisTimedOut] Acesso negado: usuário não é dono da sessão.', [
+                'session_id' => $session->id,
+                'user_id' => auth()->id(),
+            ]);
+            abort(403);
+        }
+
+        if ($session->analysis_status === AnalysisStatus::Processing) {
+            $reason = 'A análise demorou demais e não pôde ser concluída. Tente novamente.';
+
+            $session->update([
+                'analysis_status' => AnalysisStatus::Failed,
+                'analysis_failure_reason' => $reason,
+            ]);
+
+            event(new ReceiptAnalysisUpdated($session->id, AnalysisStatus::Failed->value, $reason));
+
+            Log::warning('[Controller][SessionController][markAnalysisTimedOut] Análise presa em processamento marcada como falha.', [
+                'session_id' => $session->id,
+            ]);
+        }
 
         return redirect()->route('sessions.show', $session);
     }

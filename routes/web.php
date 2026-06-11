@@ -28,11 +28,17 @@ Route::middleware('auth')->group(function () {
     Route::post('/sessions/{session}/extract', [SessionController::class, 'extract'])
         ->name('sessions.extract');
 
+    Route::post('/sessions/{session}/extract/timeout', [SessionController::class, 'markExtractionTimedOut'])
+        ->name('sessions.extract.timeout');
+
     Route::post('/sessions/{session}/clarify', [SessionController::class, 'clarify'])
         ->name('sessions.clarify');
 
     Route::post('/sessions/{session}/analyze', [SessionController::class, 'analyze'])
         ->name('sessions.analyze');
+
+    Route::post('/sessions/{session}/analyze/timeout', [SessionController::class, 'markAnalysisTimedOut'])
+        ->name('sessions.analyze.timeout');
 
     Route::post('/sessions/{session}/analyze/clarify', [SessionController::class, 'clarifyAnalysis'])
         ->name('sessions.analyze.clarify');

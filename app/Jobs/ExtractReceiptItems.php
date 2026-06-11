@@ -34,6 +34,12 @@ class ExtractReceiptItems implements ShouldQueue
     public int $timeout = 120;
 
     /**
+     * Treat a timeout as a terminal failure: run failed() (which broadcasts the
+     * error and unsticks the session) instead of silently re-queueing.
+     */
+    public bool $failOnTimeout = true;
+
+    /**
      * @return array<int, int>
      */
     public function backoff(): array
