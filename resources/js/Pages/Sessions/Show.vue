@@ -334,6 +334,31 @@ onBeforeUnmount(() => {
                                 Responda para concluir a leitura da conta.
                             </p>
 
+                            <div
+                                v-if="(session.clarifications?.understood?.items ?? []).length"
+                                class="mt-4 rounded-md border border-hairline bg-surface-card p-3"
+                            >
+                                <p class="text-xs font-medium text-muted">O que a IA já entendeu até agora</p>
+                                <ul class="mt-2 space-y-1 text-sm text-body">
+                                    <li
+                                        v-for="(item, idx) in session.clarifications.understood.items"
+                                        :key="idx"
+                                        class="flex justify-between gap-2"
+                                    >
+                                        <span>{{ Number(item.quantity) }}x {{ item.name }}</span>
+                                        <span class="text-muted">{{ brl(item.total_price) }}</span>
+                                    </li>
+                                </ul>
+                                <div class="mt-2 flex justify-between gap-2 border-t border-hairline pt-2 text-sm">
+                                    <span class="text-muted">Subtotal</span>
+                                    <span class="text-ink">{{ brl(session.clarifications.understood.subtotal) }}</span>
+                                </div>
+                                <div class="flex justify-between gap-2 text-sm font-medium">
+                                    <span class="text-muted">Total</span>
+                                    <span class="text-ink">{{ brl(session.clarifications.understood.total) }}</span>
+                                </div>
+                            </div>
+
                             <form class="mt-4 space-y-4" @submit.prevent="submitClarifications">
                                 <div
                                     v-for="question in (session.clarifications?.pending ?? [])"
