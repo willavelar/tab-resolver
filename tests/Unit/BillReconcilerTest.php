@@ -180,3 +180,60 @@ it('asks for participants when none submitted', function () {
 
     expect($result->needsInput())->toBeTrue();
 });
+
+function receiptWithParking(): array
+{
+    return [
+        ['name' => 'Parmegiana', 'quantity' => 1.0, 'unit_price' => 100.00, 'total_price' => 100.00, 'category' => 'food'],
+        ['name' => 'Estacionamento', 'quantity' => 1.0, 'unit_price' => 20.00, 'total_price' => 20.00, 'category' => 'other'],
+    ];
+}
+
+it('asks who consumed an unclaimed outros item when others is not shared', function () {
+    $claims = [
+        ['participant_id' => 'w', 'items' => [['name' => 'Parmegiana', 'quantity' => 1.0]]],
+        ['participant_id' => 'c', 'items' => []],
+    ];
+
+    $result = (new BillReconciler)->reconcile(
+        items: receiptWithParking(),
+        participants: participantsFixture(),
+        claims: $claims,
+        foodShared: false,
+        othersShared: false,
+        serviceChargePercentage: 0.0,
+        total: 120.00,
+        forceFinal: false,
+    );
+
+    expect($result->needsInput())->toBeTrue()
+        ->and($result->questions[0]['prompt'])->toContain('Estacionamento')
+        ->and($result->questions[0]['prompt'])->toContain('outros');
+});
+
+it('splits an unclaimed outros item equally when others is shared', function () {
+    $claims = [
+        ['participant_id' => 'w', 'items' => [['name' => 'Parmegiana', 'quantity' => 1.0]]],
+        ['participant_id' => 'c', 'items' => []],
+    ];
+
+    $result = (new BillReconciler)->reconcile(
+        items: receiptWithParking(),
+        participants: participantsFixture(),
+        claims: $claims,
+        foodShared: false,
+        othersShared: true,
+        serviceChargePercentage: 0.0,
+        total: 120.00,
+        forceFinal: false,
+    );
+
+    expect($result->needsInput())->toBeFalse();
+
+    $byId = collect($result->allocations)->keyBy('participant_id');
+    expect($byId['w']['shared_food_share'])->toBe(10.00)
+        ->and($byId['c']['shared_food_share'])->toBe(10.00);
+
+    $grand = collect($result->allocations)->sum('total');
+    expect(abs($grand - 120.00))->toBeLessThanOrEqual(0.01);
+});

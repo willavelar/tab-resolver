@@ -25,6 +25,7 @@ class BillReconciler
         float $serviceChargePercentage,
         float $total,
         bool $forceFinal,
+        bool $othersShared = false,
     ): SplitResult {
         if ($participants === []) {
             return SplitResult::requestInput(
@@ -107,7 +108,7 @@ class BillReconciler
             }
         }
 
-        $sharedFoodValue = 0.0;
+        $sharedValue = 0.0;
         foreach ($catalog as $entry) {
             $left = $entry['remaining'];
             if ($left <= 0.001) {
@@ -115,21 +116,24 @@ class BillReconciler
             }
 
             $value = round($left * $entry['unit_price'], 2);
-            $isFood = $entry['category'] === ItemCategory::Food->value;
 
             if ($forceFinal) {
-                $sharedFoodValue = round($sharedFoodValue + $value, 2);
+                $sharedValue = round($sharedValue + $value, 2);
 
                 continue;
             }
 
-            if ($isFood && $foodShared) {
-                $sharedFoodValue = round($sharedFoodValue + $value, 2);
+            $category = $entry['category'];
+            $isShared = ($category === ItemCategory::Food->value && $foodShared)
+                || ($category === ItemCategory::Other->value && $othersShared);
+
+            if ($isShared) {
+                $sharedValue = round($sharedValue + $value, 2);
 
                 continue;
             }
 
-            $kind = $isFood ? 'comida' : 'bebida';
+            $kind = mb_strtolower(ItemCategory::tryFrom($category)?->label() ?? $category);
             $questions[] = $this->question(
                 "Sobrou {$this->qty($left)}x \"{$entry['name']}\" ({$kind}) sem dono. Quem consumiu?"
             );
@@ -143,7 +147,7 @@ class BillReconciler
         }
 
         $share = count($participants) > 0
-            ? round($sharedFoodValue / count($participants), 2)
+            ? round($sharedValue / count($participants), 2)
             : 0.0;
 
         $allocations = [];
@@ -186,7 +190,7 @@ class BillReconciler
         }
 
         $raw = [
-            'shared_food_value' => $sharedFoodValue,
+            'shared_food_value' => $sharedValue,
             'computed_total' => $running,
         ];
 
