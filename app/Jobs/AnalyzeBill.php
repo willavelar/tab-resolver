@@ -68,12 +68,23 @@ class AnalyzeBill implements ShouldQueue
         );
 
         if ($result->needsInput() && ! $forceFinal) {
+            $nameById = $this->session->participants->pluck('name', 'id');
+
+            $understoodClaims = array_map(fn (array $c): array => [
+                'participant_name' => (string) ($nameById[$c['participant_id'] ?? ''] ?? ($c['participant_id'] ?? '')),
+                'items' => array_map(fn (array $i): array => [
+                    'name' => (string) ($i['name'] ?? ''),
+                    'quantity' => (float) ($i['quantity'] ?? 0),
+                ], $c['items'] ?? []),
+            ], $result->raw['claims'] ?? []);
+
             $this->session->forceFill([
                 'analysis_status' => AnalysisStatus::NeedsClarification,
                 'analysis_clarifications' => [
                     'round' => $round,
                     'answered' => $answered,
                     'pending' => $result->questions,
+                    'understood' => ['claims' => $understoodClaims],
                 ],
                 'analysis_failure_reason' => null,
             ])->save();
@@ -83,6 +94,7 @@ class AnalyzeBill implements ShouldQueue
             Log::info('[Job][AnalyzeBill][handle] Análise precisa de esclarecimento. Fim da execusão.', [
                 'session_id' => $this->session->id,
                 'perguntas' => count($result->questions),
+                'claims_parciais' => count($understoodClaims),
                 'round' => $round,
             ]);
 

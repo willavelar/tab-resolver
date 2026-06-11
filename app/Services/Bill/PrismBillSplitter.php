@@ -162,7 +162,9 @@ class PrismBillSplitter implements BillSplitter
             .'nome EXATO do item na conta e a quantidade. NÃO calcule valores nem gorjeta. '
             .'NÃO invente: se algo estiver ambíguo (ex.: alguém citou um item que não está na '
             .'conta, ou uma quantidade não bate), retorne status "needs_input" com perguntas '
-            .'objetivas em "questions" e deixe "claims" vazio. Caso contrário, status "complete".';
+            .'objetivas em "questions". MESMO ao perguntar, preencha "claims" com as atribuições '
+            .'de que você JÁ tem certeza (parcial) — serve para mostrar ao dono o que você já '
+            .'entendeu, mas NÃO substitui as perguntas. Caso contrário, status "complete".';
 
         if ($answered !== []) {
             $prompt .= "\n\nO dono já respondeu:\n";

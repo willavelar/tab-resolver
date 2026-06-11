@@ -10,6 +10,7 @@ use App\Models\SessionItem;
 use App\Models\SessionParticipant;
 use App\Models\User;
 use App\Services\Bill\BillSplitter;
+use App\Services\Bill\SplitResult;
 use Illuminate\Support\Facades\Event;
 
 function seedSplittableSession(): Session
@@ -61,4 +62,37 @@ it('completes analysis and persists per-participant amounts', function () {
 
     Event::assertDispatched(ReceiptAnalysisUpdated::class);
     Event::assertDispatched(BillAnalysisCompleted::class);
+});
+
+it('persists what the AI understood (claims by participant name) when it asks for clarification', function () {
+    Event::fake([ReceiptAnalysisUpdated::class, BillAnalysisCompleted::class]);
+
+    $session = Session::factory()->for(User::factory())->create([
+        'status' => ExtractionStatus::Completed,
+        'analysis_status' => AnalysisStatus::Processing,
+    ]);
+    $participant = SessionParticipant::factory()->for($session, 'session')->create(['name' => 'William']);
+    $session->load('items', 'participants');
+
+    $this->app->instance(BillSplitter::class, new class implements BillSplitter
+    {
+        public function split(Session $session, array $participants, bool $foodShared, array $answered = [], bool $forceFinal = false): SplitResult
+        {
+            return SplitResult::requestInput(
+                questions: [['id' => 'q1', 'prompt' => 'Quem pediu o Moscow Mule?', 'type' => 'text', 'options' => []]],
+                raw: ['claims' => [
+                    ['participant_id' => $participants[0]['id'], 'items' => [['name' => 'Heineken', 'quantity' => 2.0]]],
+                ]],
+            );
+        }
+    });
+
+    (new AnalyzeBill($session))->handle(app(BillSplitter::class));
+    $session->refresh();
+
+    expect($session->analysis_status)->toBe(AnalysisStatus::NeedsClarification)
+        ->and($session->analysis_clarifications['pending'])->toHaveCount(1)
+        ->and($session->analysis_clarifications['understood']['claims'])->toHaveCount(1)
+        ->and($session->analysis_clarifications['understood']['claims'][0]['participant_name'])->toBe('William')
+        ->and($session->analysis_clarifications['understood']['claims'][0]['items'][0]['name'])->toBe('Heineken');
 });
