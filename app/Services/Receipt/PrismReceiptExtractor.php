@@ -74,8 +74,10 @@ class PrismReceiptExtractor implements ReceiptExtractor
             .'percentual quando indicado) e total. Use números (sem símbolo de moeda). '
             .'Se a taxa de serviço não existir, use 0. NÃO ADIVINHE: se tiver qualquer '
             .'dúvida sobre a categoria de um item ou não conseguir ler um valor, retorne '
-            .'status "needs_input" com perguntas objetivas em "questions" (uma por dúvida), '
-            .'e deixe "items" vazio. Caso contrário, retorne status "complete".';
+            .'status "needs_input" com perguntas objetivas em "questions" (uma por dúvida). '
+            .'MESMO ao perguntar, preencha "items", subtotal, taxa e total com tudo o que '
+            .'você JÁ leu com confiança (parcial) — isso serve para mostrar ao usuário o que '
+            .'você já entendeu, mas NÃO substitui as perguntas. Caso contrário, status "complete".';
 
         if ($answered !== []) {
             $prompt .= "\n\nO usuário já respondeu às seguintes dúvidas — use estas respostas:\n";
@@ -115,11 +117,27 @@ class PrismReceiptExtractor implements ReceiptExtractor
                 'options' => array_values(array_map('strval', $q['options'] ?? [])),
             ], $data['questions'] ?? []);
 
+            $partialItems = array_map(fn (array $item): array => [
+                'name' => (string) ($item['name'] ?? ''),
+                'quantity' => (float) ($item['quantity'] ?? 0),
+                'unit_price' => (float) ($item['unit_price'] ?? 0),
+                'total_price' => (float) ($item['total_price'] ?? 0),
+                'category' => in_array($item['category'] ?? null, ['food', 'drink'], true) ? $item['category'] : 'food',
+            ], $data['items'] ?? []);
+
             Log::info('[Service][PrismReceiptExtractor][extract] Modelo retornou perguntas de esclarecimento. Fim da execusão.', [
                 'perguntas' => count($questions),
+                'itens_parciais' => count($partialItems),
             ]);
 
-            return ExtractionResult::requestInput($questions, $data);
+            return ExtractionResult::requestInput(
+                questions: $questions,
+                raw: $data,
+                items: $partialItems,
+                subtotal: (float) ($data['subtotal'] ?? 0),
+                serviceCharge: (float) ($data['service_charge'] ?? 0),
+                total: (float) ($data['total'] ?? 0),
+            );
         }
 
         $items = array_map(fn (array $item): array => [

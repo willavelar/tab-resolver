@@ -51,9 +51,24 @@ class ExtractionResult
     /**
      * @param  array<int, array{id: string, prompt: string, type: string, options: array<int, string>}>  $questions
      * @param  array<string, mixed>  $raw
+     * @param  array<int, array{name: string, quantity: float, unit_price: float, total_price: float, category: string}>  $items
      */
-    public static function requestInput(array $questions, array $raw): self
-    {
-        return new self(status: 'needs_input', questions: $questions, raw: $raw);
+    public static function requestInput(
+        array $questions,
+        array $raw,
+        array $items = [],
+        float $subtotal = 0.0,
+        float $serviceCharge = 0.0,
+        float $total = 0.0,
+    ): self {
+        return new self(
+            status: 'needs_input',
+            items: $items,
+            subtotal: $subtotal,
+            serviceCharge: $serviceCharge,
+            total: $total,
+            questions: $questions,
+            raw: $raw,
+        );
     }
 }

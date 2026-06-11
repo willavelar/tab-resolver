@@ -72,7 +72,7 @@ class ExtractReceiptItems implements ShouldQueue
         $result = $extractor->extract($absolutePath, $answered, $forceFinal);
 
         if ($result->needsInput() && ! $forceFinal) {
-            $this->requestClarification($round, $answered, $result->questions, $result->raw);
+            $this->requestClarification($round, $answered, $result->questions, $result);
 
             Log::info('[Job][ExtractReceiptItems][handle] Extração precisa de esclarecimento. Fim da execusão.', [
                 'session_id' => $this->session->id,
@@ -95,7 +95,7 @@ class ExtractReceiptItems implements ShouldQueue
             );
 
             if ($reconQuestions !== []) {
-                $this->requestClarification($round, $answered, $reconQuestions, $result->raw);
+                $this->requestClarification($round, $answered, $reconQuestions, $result);
 
                 Log::info('[Job][ExtractReceiptItems][handle] Conta não fechou na reconciliação. Fim da execusão.', [
                     'session_id' => $this->session->id,
@@ -147,13 +147,13 @@ class ExtractReceiptItems implements ShouldQueue
 
     /**
      * Estaciona a sessão aguardando esclarecimento do dono, reaproveitado tanto
-     * pelas perguntas da IA quanto pelas divergências da reconciliação.
+     * pelas perguntas da IA quanto pelas divergências da reconciliação. Inclui em
+     * "understood" o que a IA já leu (itens + totais) para dar contexto à pergunta.
      *
      * @param  array<int, array{question: string, answer: string}>  $answered
      * @param  array<int, array{id: string, prompt: string, type: string, options: array<int, string>}>  $questions
-     * @param  array<string, mixed>  $raw
      */
-    private function requestClarification(int $round, array $answered, array $questions, array $raw): void
+    private function requestClarification(int $round, array $answered, array $questions, ExtractionResult $result): void
     {
         $this->session->forceFill([
             'status' => ExtractionStatus::NeedsClarification,
@@ -161,8 +161,14 @@ class ExtractReceiptItems implements ShouldQueue
                 'round' => $round,
                 'answered' => $answered,
                 'pending' => $questions,
+                'understood' => [
+                    'items' => $result->items,
+                    'subtotal' => $result->subtotal,
+                    'service_charge' => $result->serviceCharge,
+                    'total' => $result->total,
+                ],
             ],
-            'raw_extraction' => $raw,
+            'raw_extraction' => $result->raw,
             'failure_reason' => null,
         ])->save();
 

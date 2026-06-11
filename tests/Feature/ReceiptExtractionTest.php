@@ -407,3 +407,37 @@ test('clarify rejects an incomplete set of answers and keeps the session waiting
     expect($session->fresh()->status)->toBe(ExtractionStatus::NeedsClarification);
     Queue::assertNothingPushed();
 });
+
+test('the clarification payload includes what the AI already understood', function () {
+    Event::fake();
+    $this->app->instance(ReceiptExtractor::class, new class implements ReceiptExtractor
+    {
+        public function extract(string $absoluteImagePath, array $answered = [], bool $forceFinal = false): ExtractionResult
+        {
+            return ExtractionResult::requestInput(
+                questions: [['id' => 'q1', 'prompt' => 'Caipirinha é Comida ou Bebida?', 'type' => 'choice', 'options' => ['Comida', 'Bebida']]],
+                raw: ['status' => 'needs_input'],
+                items: [
+                    ['name' => 'Heineken', 'quantity' => 2.0, 'unit_price' => 9.90, 'total_price' => 19.80, 'category' => 'drink'],
+                ],
+                subtotal: 19.80,
+                serviceCharge: 0.0,
+                total: 19.80,
+            );
+        }
+    });
+
+    $session = Session::factory()->for(User::factory())->create([
+        'status' => ExtractionStatus::Processing,
+        'image_path' => 'receipts/example.jpg',
+    ]);
+
+    ExtractReceiptItems::dispatchSync($session);
+    $session->refresh();
+
+    expect($session->status)->toBe(ExtractionStatus::NeedsClarification)
+        ->and($session->clarifications['understood']['items'])->toHaveCount(1)
+        ->and($session->clarifications['understood']['items'][0]['name'])->toBe('Heineken')
+        ->and((float) $session->clarifications['understood']['subtotal'])->toBe(19.80)
+        ->and((float) $session->clarifications['understood']['total'])->toBe(19.80);
+});
