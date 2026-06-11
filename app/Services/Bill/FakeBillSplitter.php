@@ -6,7 +6,7 @@ use App\Models\Session;
 
 class FakeBillSplitter implements BillSplitter
 {
-    public function split(Session $session, array $participants, bool $foodShared, array $answered = [], bool $forceFinal = false): SplitResult
+    public function split(Session $session, array $participants, bool $foodShared, bool $othersShared = false, array $answered = [], bool $forceFinal = false): SplitResult
     {
         $ids = array_column($participants, 'id');
         $claims = [];
@@ -37,6 +37,7 @@ class FakeBillSplitter implements BillSplitter
             participants: $participants,
             claims: $claims,
             foodShared: $foodShared,
+            othersShared: $othersShared,
             serviceChargePercentage: (float) $session->service_charge_percentage,
             total: (float) $session->total,
             forceFinal: $forceFinal,

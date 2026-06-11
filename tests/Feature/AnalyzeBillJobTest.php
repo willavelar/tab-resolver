@@ -76,7 +76,7 @@ it('persists what the AI understood (claims by participant name) when it asks fo
 
     $this->app->instance(BillSplitter::class, new class implements BillSplitter
     {
-        public function split(Session $session, array $participants, bool $foodShared, array $answered = [], bool $forceFinal = false): SplitResult
+        public function split(Session $session, array $participants, bool $foodShared, bool $othersShared = false, array $answered = [], bool $forceFinal = false): SplitResult
         {
             return SplitResult::requestInput(
                 questions: [['id' => 'q1', 'prompt' => 'Quem pediu o Moscow Mule?', 'type' => 'text', 'options' => []]],

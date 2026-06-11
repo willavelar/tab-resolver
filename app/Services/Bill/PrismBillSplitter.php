@@ -18,12 +18,13 @@ use Prism\Prism\ValueObjects\Media\Audio;
 
 class PrismBillSplitter implements BillSplitter
 {
-    public function split(Session $session, array $participants, bool $foodShared, array $answered = [], bool $forceFinal = false): SplitResult
+    public function split(Session $session, array $participants, bool $foodShared, bool $othersShared = false, array $answered = [], bool $forceFinal = false): SplitResult
     {
         Log::info('[Service][PrismBillSplitter][split] Inicio da execusão.', [
             'session_id' => $session->id,
             'participantes' => count($participants),
             'food_shared' => $foodShared,
+            'others_shared' => $othersShared,
             'force_final' => $forceFinal,
         ]);
 
@@ -50,6 +51,7 @@ class PrismBillSplitter implements BillSplitter
             participants: $participants,
             claims: $claims->raw['claims'] ?? [],
             foodShared: $foodShared,
+            othersShared: $othersShared,
             serviceChargePercentage: (float) $session->service_charge_percentage,
             total: (float) $session->total,
             forceFinal: $forceFinal,

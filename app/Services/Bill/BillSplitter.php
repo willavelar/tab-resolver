@@ -13,5 +13,5 @@ interface BillSplitter
      * @param  array<int, array{question: string, answer: string}>  $answered  Prior Q&A fed back to the model.
      * @param  bool  $forceFinal  When true, must return complete allocations (no more questions).
      */
-    public function split(Session $session, array $participants, bool $foodShared, array $answered = [], bool $forceFinal = false): SplitResult;
+    public function split(Session $session, array $participants, bool $foodShared, bool $othersShared = false, array $answered = [], bool $forceFinal = false): SplitResult;
 }

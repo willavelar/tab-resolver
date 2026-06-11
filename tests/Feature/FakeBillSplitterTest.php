@@ -34,7 +34,7 @@ it('returns complete allocations for the canned example', function () {
         ['id' => 'c', 'name' => 'Camila'],
     ];
 
-    $result = app(BillSplitter::class)->split($session, $participants, true, [], false);
+    $result = app(BillSplitter::class)->split($session, $participants, true, false, [], false);
 
     expect($result->needsInput())->toBeFalse()
         ->and($result->allocations)->toHaveCount(2);

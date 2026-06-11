@@ -63,6 +63,7 @@ class AnalyzeBill implements ShouldQueue
             $this->session,
             $participants,
             (bool) $this->session->food_shared,
+            (bool) $this->session->others_shared,
             $answered,
             $forceFinal,
         );
