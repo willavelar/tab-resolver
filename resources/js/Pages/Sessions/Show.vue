@@ -561,6 +561,28 @@ onBeforeUnmount(() => {
                                     <p class="text-sm font-medium text-ink">Precisamos de algumas respostas</p>
                                     <p class="mt-1 text-xs text-muted">Responda para fechar a divisão da conta.</p>
 
+                                    <div
+                                        v-if="(session.analysis_clarifications?.understood?.claims ?? []).length"
+                                        class="mt-4 rounded-md border border-hairline bg-surface-card p-3"
+                                    >
+                                        <p class="text-xs font-medium text-muted">O que a IA já entendeu até agora</p>
+                                        <div
+                                            v-for="(claim, idx) in session.analysis_clarifications.understood.claims"
+                                            :key="idx"
+                                            class="mt-2"
+                                        >
+                                            <p class="text-sm font-medium text-ink">{{ claim.participant_name }}</p>
+                                            <ul class="mt-1 space-y-0.5 text-sm text-body">
+                                                <li v-for="(item, i) in (claim.items ?? [])" :key="i">
+                                                    {{ Number(item.quantity) }}x {{ item.name }}
+                                                </li>
+                                                <li v-if="!(claim.items ?? []).length" class="text-muted">
+                                                    (nada atribuído ainda)
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </div>
+
                                     <form class="mt-4 space-y-4" @submit.prevent="submitAnalysisClarification">
                                         <div
                                             v-for="question in (session.analysis_clarifications?.pending ?? [])"
