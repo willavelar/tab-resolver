@@ -39,3 +39,14 @@ it('tells the model about the outros category for non-consumables', function () 
         ->toContain('other')
         ->toContain('estacionamento');
 });
+
+it('instructs category clarification questions to offer comida, bebida and outros', function () {
+    $prompt = (new PrismReceiptExtractor)->buildPrompt();
+
+    // Ao perguntar a categoria de um item, o modelo deve sempre oferecer as
+    // três categorias como opções — não só Comida/Bebida.
+    expect($prompt)
+        ->toContain('Comida')
+        ->toContain('Bebida')
+        ->toContain('Outros');
+});

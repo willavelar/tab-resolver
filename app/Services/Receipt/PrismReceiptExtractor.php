@@ -167,6 +167,8 @@ class PrismReceiptExtractor implements ReceiptExtractor
             .'NÃO ADIVINHE: se tiver qualquer '
             .'dúvida sobre a categoria de um item ou não conseguir ler um valor, retorne '
             .'status "needs_input" com perguntas objetivas em "questions" (uma por dúvida). '
+            .'Ao perguntar a categoria de um item, use type "choice" e ofereça SEMPRE as '
+            .'três opções: "Comida", "Bebida" e "Outros" (nunca omita "Outros"). '
             .'MESMO ao perguntar, preencha "items", subtotal, taxa e total com tudo o que '
             .'você JÁ leu com confiança (parcial) — isso serve para mostrar ao usuário o que '
             .'você já entendeu, mas NÃO substitui as perguntas. Caso contrário, status "complete".';
